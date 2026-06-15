@@ -8,7 +8,7 @@ import {
   LogOut, BarChart3, CreditCard, ArrowUpRight
 } from 'lucide-react'
 
-const API = `${import.meta.env.VITE_API_URL}/api/admin/platform`
+const API = `${import.meta.env.VITE_API_URL.replace('/api/v1', '')}/api/admin/platform`
 
 const formatGHS = (n) =>
   `GHS ${parseFloat(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
