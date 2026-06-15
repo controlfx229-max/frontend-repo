@@ -569,9 +569,9 @@ export default function PlatformAdmin() {
         <div className="settings-tabs" style={{ marginBottom: 'var(--space-6)' }}>
           {TABS.map(tab => (
             <button key={tab.id} className={`settings-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}>
-              <span>{tab.label}</span>
-            </button>
+  onClick={() => setActiveTab(tab.id)}>
+  {tab.label}   {/* ← no span, never hidden */}
+</button>
           ))}
           <button
             className="btn-outline"

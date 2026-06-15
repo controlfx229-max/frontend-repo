@@ -4016,3 +4016,35 @@
   from { width: 0%; }
   to   { width: 100%; }
 }
+
+/* ─── SETTINGS / BILLING TABS — MOBILE FIX ── */
+@media (max-width: 768px) {
+
+  /* Show tab text — icon + label both visible */
+  .settings-tab span {
+    display: inline !important;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  /* Tabs scroll horizontally, never wrap or collapse */
+  .settings-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: var(--space-2);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* hide scrollbar on Firefox */
+  }
+
+  .settings-tabs::-webkit-scrollbar {
+    display: none; /* hide scrollbar on Chrome/Safari */
+  }
+
+  /* Each tab has a min-width so it doesn't collapse */
+  .settings-tab {
+    min-width: fit-content;
+    flex-shrink: 0;
+    padding: 0.5rem var(--space-3);
+    font-size: var(--text-xs);
+  }
+}
