@@ -28,7 +28,7 @@ export default function TwoFactorSetup() {
           return
         }
 
-        const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/2fa/setup`, {
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/auth/2fa/setup`, {
           method:  'POST',
           headers: {
             'Content-Type':  'application/json',
@@ -77,7 +77,7 @@ export default function TwoFactorSetup() {
         return
       }
 
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/2fa/confirm`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/auth/2fa/confirm`, {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',

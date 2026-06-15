@@ -37,8 +37,8 @@ function BranchForm({ token, branch, onSuccess, onClose }) {
     setLoading(true)
     try {
       const url    = isEdit
-        ? `${import.meta.env.VITE_API_URL}/api/v1/branches/${branch._id}`
-        : `${import.meta.env.VITE_API_URL}/api/v1/branches`
+        ? `${import.meta.env.VITE_API_URL}/branches/${branch._id}`
+        : `${import.meta.env.VITE_API_URL}/branches`
       const method = isEdit ? 'PUT' : 'POST'
 
       const res  = await fetch(url, {
@@ -339,7 +339,7 @@ export default function BranchesTab({ token, userRole }) {
   const fetchBranchInfo = useCallback(async () => {
     setLoading(true)
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/branch-info`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/settings/branch-info`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -368,7 +368,7 @@ export default function BranchesTab({ token, userRole }) {
     setDeleting(true)
     try {
       const res  = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/v1/branches/${deleteTarget._id}`,
+        `${import.meta.env.VITE_API_URL}/branches/${deleteTarget._id}`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
       )
       const data = await res.json()

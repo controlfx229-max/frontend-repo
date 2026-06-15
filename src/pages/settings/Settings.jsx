@@ -75,7 +75,7 @@ function ProfileTab({ token, org, onSaved }) {
   const handleSave = async () => {
     setLoading(true)
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/profile`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/settings/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(form)
@@ -155,7 +155,7 @@ function TeamTab({ token }) {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/users`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/settings/users`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -166,7 +166,7 @@ function TeamTab({ token }) {
 
   const fetchBranches = useCallback(async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/branch-info`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings/branch-info`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -195,7 +195,7 @@ function TeamTab({ token }) {
     }
 
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/users/invite`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/settings/users/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(inviteForm)
@@ -214,7 +214,7 @@ function TeamTab({ token }) {
   const handleToggleCrossBranch = async (userId, enabled) => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/v1/settings/users/${userId}/cross-branch-access`,
+        `${import.meta.env.VITE_API_URL}/settings/users/${userId}/cross-branch-access`,
         {
           method: 'PUT',
           headers: {
@@ -475,7 +475,7 @@ function SecurityTab({ token }) {
     if (form.newPassword.length < 8) { setError('New password must be at least 8 characters.'); return }
     setLoading(true)
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/password`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/settings/password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ currentPassword: form.currentPassword, newPassword: form.newPassword })
@@ -544,7 +544,7 @@ export default function Settings() {
   useEffect(() => {
     const fetchOrg = async () => {
       try {
-        const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/settings/profile`, {
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/settings/profile`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await res.json()

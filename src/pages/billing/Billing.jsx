@@ -202,7 +202,7 @@ useEffect(() => {
       if (type === 'sms')    body.smsBundleKey = smsBundle
       if (type === 'branch') body.branchDetails = { branchName }
 
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/billing/request`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/request`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify(body)
@@ -220,7 +220,7 @@ useEffect(() => {
     if (!txId.trim()) { setError('Please enter your MoMo transaction ID.'); return }
     setLoading(true)
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/billing/proof`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/proof`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ reference: payment.reference, transactionId: txId.trim() })
@@ -448,7 +448,7 @@ export default function Billing() {
 
   const fetchBilling = useCallback(async () => {
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/billing/status`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/status`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -782,7 +782,7 @@ function HistoryRow({ payment, token, onRefresh }) {
     setCancelError('')
     try {
       const res  = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/v1/billing/request/${payment.reference}/cancel`,
+        `${import.meta.env.VITE_API_URL}/billing/request/${payment.reference}/cancel`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
       )
       const data = await res.json()
@@ -805,7 +805,7 @@ function HistoryRow({ payment, token, onRefresh }) {
     setSubmitting(true)
     setError('')
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/billing/proof`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/proof`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ reference: payment.reference, transactionId: txnId.trim() })
@@ -1031,7 +1031,7 @@ function PaymentHistory({ token }) {
   const fetchPayments = useCallback(async () => {
     setLoading(true)
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/billing/history`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/history`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()

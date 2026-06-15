@@ -17,7 +17,7 @@ export default function BackupCodeVerify() {
     setLoading(true)
 
     try {
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/2fa/backup`, {
+      const res  = await fetch(`${import.meta.env.VITE_API_URL}/auth/2fa/backup`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
