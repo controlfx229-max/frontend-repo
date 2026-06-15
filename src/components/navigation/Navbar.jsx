@@ -8,42 +8,97 @@ import { useAuth } from '../../context/AuthContext'
 import { useBranch } from '../../context/BranchContext'
 import useApi from '../../hooks/useApi'
 
-// ─── SEARCH MODAL ─────────────────────────────
-function SearchModal({ api, branchReady, onClose }) {
-  const [query, setQuery]     = useState('')
-  const [results, setResults] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const inputRef              = useRef(null)
 
+// ── All navigable pages in the app ──
+const APP_PAGES = [
+  { label: 'Dashboard',      path: '/dashboard',      icon: LayoutDashboard, keywords: ['home', 'overview', 'stats'] },
+  { label: 'Members',        path: '/members',         icon: Users,           keywords: ['people', 'congregation', 'register'] },
+  { label: 'Attendance',     path: '/attendance',      icon: CalendarCheck,   keywords: ['service', 'present', 'absent', 'sunday'] },
+  { label: 'Finance',        path: '/finance',         icon: Wallet,          keywords: ['offering', 'tithe', 'money', 'income', 'expense'] },
+  { label: 'Departments',    path: '/departments',     icon: Building2,       keywords: ['groups', 'cells', 'ministry', 'team'] },
+  { label: 'Events',         path: '/events',          icon: Calendar,        keywords: ['programs', 'schedule', 'upcoming'] },
+  { label: 'Reports',        path: '/reports',         icon: BarChart3,       keywords: ['analytics', 'summary', 'chart'] },
+  { label: 'Communications', path: '/communications',  icon: Megaphone,       keywords: ['sms', 'message', 'broadcast', 'whatsapp'] },
+  { label: 'Visitors',       path: '/visitors',        icon: Globe,           keywords: ['guests', 'first timers', 'new'] },
+  { label: 'Pledges',        path: '/pledges',         icon: Flag,            keywords: ['commitment', 'vow', 'giving'] },
+  { label: 'Automations',    path: '/automations',     icon: Repeat2,         keywords: ['auto', 'birthday', 'trigger', 'reminder'] },
+  { label: 'Audit Log',      path: '/audit',           icon: BookOpen,        keywords: ['history', 'changes', 'log'] },
+  { label: 'Settings',       path: '/settings',        icon: Settings,        keywords: ['profile', 'church', 'account', 'plan', 'billing'] },
+  { label: 'Billing',        path: '/billing',         icon: Wallet,          keywords: ['subscription', 'plan', 'payment', 'renew'] },
+  { label: 'Add Member',     path: '/members?add=true',icon: UserPlus,        keywords: ['new member', 'register member'] },
+]
+ 
+function SearchModal({ api, branchReady, onClose }) {
+  const [query, setQuery]           = useState('')
+  const [memberResults, setMembers] = useState([])
+  const [pageResults, setPages]     = useState([])
+  const [loading, setLoading]       = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
+  const inputRef  = useRef(null)
+  const navigate  = useNavigate()
+ 
+  // Focus on open + ESC to close
   useEffect(() => {
     inputRef.current?.focus()
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
-
+ 
+  // Search logic — debounced
   useEffect(() => {
-    if (!branchReady || !query.trim() || query.length < 2) { setResults(null); return }
+    const q = query.trim().toLowerCase()
+ 
+    if (!q || q.length < 2) {
+      setMembers([])
+      setPages([])
+      setHasSearched(false)
+      return
+    }
+ 
+    // ── Page search (instant, no API) ──
+    const matchedPages = APP_PAGES.filter(p =>
+      p.label.toLowerCase().includes(q) ||
+      p.keywords.some(k => k.includes(q))
+    ).slice(0, 4)
+    setPages(matchedPages)
+ 
+    // ── Member search (API) ──
+    if (!branchReady) return
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const data = await api(`/members?search=${encodeURIComponent(query)}&limit=6`)
-        if (data.success) setResults(data.members)
+        const data = await api(`/members?search=${encodeURIComponent(query)}&limit=5`)
+        if (data.success) setMembers(data.members)
       } catch {}
-      finally { setLoading(false) }
+      finally {
+        setLoading(false)
+        setHasSearched(true)
+      }
     }, 300)
+ 
     return () => clearTimeout(timer)
   }, [query, api, branchReady])
-
+ 
+  const goTo = useCallback((path) => {
+    onClose()
+    navigate(path)
+  }, [navigate, onClose])
+ 
+  const hasResults = memberResults.length > 0 || pageResults.length > 0
+  const isEmpty    = hasSearched && !loading && !hasResults
+ 
   return (
     <div className="search-modal-overlay" onClick={onClose}>
       <div className="search-modal" onClick={e => e.stopPropagation()}>
+ 
+        {/* ── Input ── */}
         <div className="search-modal-input-wrap">
           <Search size={18} color="var(--text-muted)" />
           <input
             ref={inputRef}
             className="search-modal-input"
-            placeholder="Search members by name, ID, or phone..."
+            placeholder="Search members, pages, attendance..."
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
@@ -54,21 +109,60 @@ function SearchModal({ api, branchReady, onClose }) {
             </button>
           )}
         </div>
-
-        {results !== null && (
+ 
+        {/* ── Results ── */}
+        {(hasResults || isEmpty) && (
           <div className="search-results">
-            {results.length === 0 ? (
-              <div className="search-no-results">
-                <Search size={28} />
-                <p>No members found for "{query}"</p>
+ 
+            {/* Pages */}
+            {pageResults.length > 0 && (
+              <div className="search-result-group">
+                <p className="search-result-group-label">
+                  <LayoutDashboard size={11} /> Pages
+                </p>
+                {pageResults.map(page => {
+                  const Icon = page.icon
+                  return (
+                    <div
+                      key={page.path}
+                      className="search-result-item"
+                      onClick={() => goTo(page.path)}
+                    >
+                      <div className="search-result-avatar" style={{
+                        background: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        borderRadius: 'var(--radius-md)'
+                      }}>
+                        <Icon size={16} />
+                      </div>
+                      <div className="search-result-info">
+                        <p className="search-result-name">{page.label}</p>
+                        <p className="search-result-sub">{page.path}</p>
+                      </div>
+                      <span style={{
+                        fontSize: 10, color: 'var(--text-muted)',
+                        fontWeight: 600, whiteSpace: 'nowrap'
+                      }}>
+                        Go →
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
-            ) : (
+            )}
+ 
+            {/* Members */}
+            {memberResults.length > 0 && (
               <div className="search-result-group">
                 <p className="search-result-group-label">
                   <Users size={11} /> Members
                 </p>
-                {results.map(m => (
-                  <div key={m._id} className="search-result-item" onClick={onClose}>
+                {memberResults.map(m => (
+                  <div
+                    key={m._id}
+                    className="search-result-item"
+                    onClick={() => goTo(`/members/${m._id}`)}
+                  >
                     <div className="search-result-avatar">
                       {m.firstName[0]}{m.lastName[0]}
                     </div>
@@ -81,24 +175,82 @@ function SearchModal({ api, branchReady, onClose }) {
                         {m.departmentId?.name && ` · ${m.departmentId.name}`}
                       </p>
                     </div>
+                    <span style={{
+                      fontSize: 10, color: 'var(--text-muted)',
+                      fontWeight: 600, whiteSpace: 'nowrap'
+                    }}>
+                      View →
+                    </span>
                   </div>
                 ))}
               </div>
             )}
+ 
+            {/* Empty */}
+            {isEmpty && (
+              <div className="search-no-results">
+                <Search size={28} />
+                <p>No results for "{query}"</p>
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Try searching a member name, phone, or page name
+                </p>
+              </div>
+            )}
+ 
           </div>
         )}
-
-        {!results && (
+ 
+        {/* ── Hint (before search) ── */}
+        {!hasResults && !isEmpty && (
           <div className="search-hint">
-            <span>Type at least 2 characters to search</span>
+            <span>Search members, pages, departments...</span>
             <kbd>ESC</kbd>
           </div>
         )}
+ 
+        {/* ── Quick links (before search) ── */}
+        {!query && (
+          <div style={{
+            padding: 'var(--space-3) var(--space-5)',
+            display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)'
+          }}>
+            {[
+              { label: '+ Add Member', path: '/members' },
+              { label: 'Attendance',   path: '/attendance' },
+              { label: 'Finance',      path: '/finance' },
+              { label: 'Reports',      path: '/reports' },
+            ].map(link => (
+              <button
+                key={link.path}
+                onClick={() => goTo(link.path)}
+                style={{
+                  fontSize: 'var(--text-xs)', fontWeight: 600,
+                  padding: '5px 12px', borderRadius: 'var(--radius-full)',
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text-secondary)',
+                  cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'var(--primary)'
+                  e.currentTarget.style.color = 'var(--primary)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+        )}
+ 
       </div>
     </div>
   )
 }
-
+ 
+export default SearchModal 
 // ─── BRANCH SWITCHER ──────────────────────────
 function BranchSwitcher() {
   const { branches, activeBranch, switchBranch, canSeeAllBranches, loading } = useBranch()

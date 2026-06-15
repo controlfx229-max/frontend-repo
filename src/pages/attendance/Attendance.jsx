@@ -122,18 +122,26 @@ function CreateServiceForm({ api, onSuccess, onClose }) {
   )
 }
 
-// ─── TAKE ATTENDANCE MODAL ───────────────────
-function TakeAttendanceModal({ service, api, onClose, onSaved }) {
-  const [members, setMembers]       = useState([])
-  const [attendance, setAttendance] = useState({})
+ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
+  const [members, setMembers]         = useState([])
+  const [attendance, setAttendance]   = useState({})
   const [departments, setDepartments] = useState([])
-  const [deptFilter, setDeptFilter] = useState('')
-  const [loading, setLoading]       = useState(true)
-  const [saving, setSaving]         = useState(false)
-  const [error, setError]           = useState('')
-  const [markAll, setMarkAll]       = useState(false)
-
-  // Fetch departments for filter
+  const [deptFilter, setDeptFilter]   = useState('')
+  const [loading, setLoading]         = useState(true)
+  const [saving, setSaving]           = useState(false)
+  const [error, setError]             = useState('')
+  const [markAll, setMarkAll]         = useState(false)
+ 
+  // ── Phone/name quick search ──
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResult, setSearchResult] = useState(null) // null | 'found' | 'not_found'
+  const [matchedMember, setMatchedMember] = useState(null)
+  const searchRef = useRef(null)
+ 
+  // Focus search input on open
+  useEffect(() => { searchRef.current?.focus() }, [])
+ 
+  // Fetch departments
   useEffect(() => {
     const fetchDepts = async () => {
       try {
@@ -143,17 +151,14 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
     }
     fetchDepts()
   }, [api])
-
-  // Fetch members
+ 
+  // Fetch members list
   const fetchMembers = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (deptFilter) params.append('departmentId', deptFilter)
-
-      const data = await api(`/attendance/members/list?${params}`,
-        {}
-      )
+      const data = await api(`/attendance/members/list?${params}`)
       if (data.success) {
         setMembers(data.members)
         // Default all to present
@@ -162,24 +167,57 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
         setAttendance(initial)
         setMarkAll(true)
       }
-    } catch (err) {
-      console.error(err)
+    } catch {
       setError('Failed to load members.')
     } finally {
       setLoading(false)
     }
   }, [api, deptFilter])
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+ 
   useEffect(() => { fetchMembers() }, [fetchMembers])
-
+ 
+  // ── Live search: match by phone or name as usher types ──
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q || q.length < 2) {
+      setSearchResult(null)
+      setMatchedMember(null)
+      return
+    }
+ 
+    // Search loaded members list — no extra API call needed
+    const found = members.find(m =>
+      m.phone?.replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+      m.whatsapp?.replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+      `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+    )
+ 
+    if (found) {
+      setMatchedMember(found)
+      setSearchResult('found')
+    } else {
+      setMatchedMember(null)
+      setSearchResult('not_found')
+    }
+  }, [searchQuery, members])
+ 
   const toggleMember = (memberId) => {
     setAttendance(prev => ({
       ...prev,
       [memberId]: prev[memberId] === 'present' ? 'absent' : 'present'
     }))
   }
-
+ 
+  // One-tap mark present from search result
+  const markSearchedPresent = () => {
+    if (!matchedMember) return
+    setAttendance(prev => ({ ...prev, [matchedMember._id]: 'present' }))
+    setSearchQuery('')
+    setSearchResult(null)
+    setMatchedMember(null)
+    searchRef.current?.focus()
+  }
+ 
   const handleMarkAll = () => {
     const newStatus = markAll ? 'absent' : 'present'
     const updated = {}
@@ -187,7 +225,7 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
     setAttendance(updated)
     setMarkAll(!markAll)
   }
-
+ 
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -195,12 +233,9 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
         memberId: m._id,
         status: attendance[m._id] || 'absent'
       }))
-
       const data = await api('/attendance/mark', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceId: service._id, records })
       })
       if (!data.success) { setError(data.message); return }
@@ -211,21 +246,22 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
       setSaving(false)
     }
   }
-
+ 
   const presentCount = Object.values(attendance).filter(s => s === 'present').length
   const absentCount  = members.length - presentCount
-
+ 
+  const initials = (m) => `${m.firstName[0]}${m.lastName[0]}`.toUpperCase()
+ 
   return (
     <div className="take-attendance">
-
-      {/* Service Info */}
+ 
+      {/* ── Service Info ── */}
       <div className="attendance-service-info">
         <div>
           <p className="attendance-service-name">{service.name}</p>
           <p className="attendance-service-date">
             {new Date(service.date).toLocaleDateString('en-GH', {
-              weekday: 'long', day: 'numeric',
-              month: 'long', year: 'numeric'
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
             })} · {service.time}
           </p>
         </div>
@@ -238,12 +274,196 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
           </span>
         </div>
       </div>
-
-      {/* Filters */}
+ 
+      {/* ── Phone / Name Quick Search ── */}
+      <div style={{
+        background: 'var(--surface-2)',
+        border: '2px solid var(--primary)',
+        borderRadius: 'var(--radius-lg)',
+        padding: 'var(--space-4)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-3)'
+      }}>
+        <p style={{
+          fontSize: 'var(--text-xs)',
+          fontWeight: 700,
+          color: 'var(--primary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em'
+        }}>
+          📞 Quick Check-in
+        </p>
+ 
+        {/* Search input */}
+        <div style={{ position: 'relative' }}>
+          <Phone size={15} style={{
+            position: 'absolute', left: 12, top: '50%',
+            transform: 'translateY(-50%)',
+            color: 'var(--text-muted)',
+            pointerEvents: 'none'
+          }} />
+          <input
+            ref={searchRef}
+            type="tel"
+            inputMode="numeric"
+            placeholder="Member's phone number or name..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.7rem 1rem 0.7rem 2.5rem',
+              border: '1.5px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 'var(--text-base)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
+            onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border)'}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); setSearchResult(null); searchRef.current?.focus() }}
+              style={{
+                position: 'absolute', right: 10, top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'var(--surface-2)', border: 'none',
+                borderRadius: '50%', width: 22, height: 22,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: 'var(--text-muted)'
+              }}
+            >
+              <XCircle size={14} />
+            </button>
+          )}
+        </div>
+ 
+        {/* ── Search result ── */}
+        {searchResult === 'found' && matchedMember && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            background: attendance[matchedMember._id] === 'present'
+              ? '#F0FDF4' : 'var(--surface)',
+            border: `2px solid ${attendance[matchedMember._id] === 'present'
+              ? 'var(--success)' : 'var(--border)'}`,
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-3) var(--space-4)',
+            transition: 'all 0.2s ease'
+          }}>
+            {/* Avatar */}
+            <div style={{
+              width: 42, height: 42, borderRadius: '50%',
+              background: attendance[matchedMember._id] === 'present'
+                ? 'var(--success-bg)' : 'var(--primary-light)',
+              color: attendance[matchedMember._id] === 'present'
+                ? 'var(--success)' : 'var(--primary)',
+              fontWeight: 800, fontSize: 'var(--text-base)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              {initials(matchedMember)}
+            </div>
+ 
+            {/* Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{
+                fontWeight: 700, color: 'var(--text-primary)',
+                fontSize: 'var(--text-sm)'
+              }}>
+                {matchedMember.firstName} {matchedMember.lastName}
+              </p>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                {matchedMember.memberId} · {matchedMember.phone}
+              </p>
+            </div>
+ 
+            {/* Action button */}
+            {attendance[matchedMember._id] === 'present' ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                color: 'var(--success)', fontWeight: 700,
+                fontSize: 'var(--text-sm)'
+              }}>
+                <CheckCircle size={20} />
+                Present
+              </div>
+            ) : (
+              <button
+                className="btn-primary"
+                onClick={markSearchedPresent}
+                style={{ whiteSpace: 'nowrap', fontSize: 'var(--text-sm)' }}
+              >
+                <CheckCircle size={14} /> Mark Present
+              </button>
+            )}
+          </div>
+        )}
+ 
+        {/* Already marked present — show confirmation + clear */}
+        {searchResult === 'found' && matchedMember &&
+          attendance[matchedMember._id] === 'present' && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => { setSearchQuery(''); setSearchResult(null); searchRef.current?.focus() }}
+              style={{
+                fontSize: 'var(--text-xs)', color: 'var(--primary)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Next member →
+            </button>
+          </div>
+        )}
+ 
+        {/* Not found */}
+        {searchResult === 'not_found' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--danger-bg)',
+            border: '1px solid #FECACA',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-3) var(--space-4)'
+          }}>
+            <div>
+              <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--danger-text)' }}>
+                Not found in system
+              </p>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--danger-text)', opacity: 0.8 }}>
+                This person is not a registered member
+              </p>
+            </div>
+            <a
+              href="/members"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 'var(--text-xs)', fontWeight: 700,
+                color: 'var(--danger)', whiteSpace: 'nowrap',
+                textDecoration: 'none',
+                background: 'white', border: '1px solid #FECACA',
+                padding: '6px 12px', borderRadius: 'var(--radius-md)'
+              }}
+            >
+              <UserPlus size={13} /> Add Member
+            </a>
+          </div>
+        )}
+      </div>
+ 
+      {/* ── Filters + Mark All ── */}
       <div className="attendance-filters">
         <select
           value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
+          onChange={e => setDeptFilter(e.target.value)}
           className="filter-select"
         >
           <option value="">All Departments</option>
@@ -255,10 +475,14 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
           {markAll ? 'Mark All Absent' : 'Mark All Present'}
         </button>
       </div>
-
+ 
       {error && <div className="form-error">{error}</div>}
-
-      {/* Member List */}
+ 
+      {/* ── Full Member List (backup) ── */}
+      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        Full Member List
+      </div>
+ 
       {loading ? (
         <LoadingSpinner message="Loading members..." />
       ) : members.length === 0 ? (
@@ -270,46 +494,43 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
         <div className="attendance-member-list">
           {members.map(member => {
             const isPresent = attendance[member._id] === 'present'
-            const initials  = `${member.firstName[0]}${member.lastName[0]}`.toUpperCase()
+            const isHighlighted = matchedMember?._id === member._id
             return (
               <div
                 key={member._id}
                 className={`attendance-member-row ${isPresent ? 'present' : 'absent'}`}
                 onClick={() => toggleMember(member._id)}
+                style={isHighlighted ? { outline: '2px solid var(--primary)' } : undefined}
               >
                 <div className="attendance-member-left">
                   <div className="member-avatar" style={{
                     background: isPresent ? 'var(--success-bg)' : 'var(--surface-2)',
                     color: isPresent ? 'var(--success)' : 'var(--text-muted)'
                   }}>
-                    {initials}
+                    {initials(member)}
                   </div>
                   <div>
                     <p className="member-name">
                       {member.firstName} {member.lastName}
                     </p>
                     <p className="member-id">
-                      {member.memberId}
+                      {member.memberId} · {member.phone}
                       {member.cellGroupId?.name && (
-                        <span className="member-group">
-                          · {member.cellGroupId.name}
-                        </span>
+                        <span className="member-group"> · {member.cellGroupId.name}</span>
                       )}
                     </p>
                   </div>
                 </div>
                 <div className={`attendance-toggle ${isPresent ? 'present' : 'absent'}`}>
-                  {isPresent
-                    ? <CheckCircle size={22} />
-                    : <XCircle size={22} />}
+                  {isPresent ? <CheckCircle size={22} /> : <XCircle size={22} />}
                 </div>
               </div>
             )
           })}
         </div>
       )}
-
-      {/* Save Button */}
+ 
+      {/* ── Save Bar ── */}
       <div className="attendance-save-bar">
         <p className="attendance-save-info">
           {presentCount} of {members.length} marked present
@@ -418,6 +639,7 @@ function ServiceCard({ service, onTakeAttendance, onView }) {
     </div>
   )
 }
+export default TakeAttendanceModal
 
 // ─── MAIN ATTENDANCE PAGE ────────────────────
 export default function Attendance() {
