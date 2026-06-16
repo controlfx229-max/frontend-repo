@@ -131,7 +131,7 @@ export default function Sidebar({ onClose }) {
             <p className="sidebar-user-role">{user?.role}</p>
           </div>
         </div>
-        <button className="sidebar-logout" onClick={logout} title="Logout">
+        <button className="sidebar-logout" onClick={() => logout()} title="Logout">
           <LogOut size={18} />
         </button>
       </div>
