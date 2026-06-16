@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import useApi from '../../hooks/useApi'
 import {
   Plus, Calendar, Users, CheckCircle,
-  XCircle, ChevronRight, Clock, Filter
+  XCircle, ChevronRight, Clock, Filter,
+  Phone, UserPlus
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
