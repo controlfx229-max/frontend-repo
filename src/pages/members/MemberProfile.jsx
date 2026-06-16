@@ -64,65 +64,59 @@ function DetailRow({ label, value, icon: Icon }) {
   if (!value || value === '—') return null
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-start',
-      justifyContent: 'space-between', gap: 'var(--space-4)',
-      padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border)'
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+      gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
         {Icon && <Icon size={13} color="var(--text-muted)" />}
-        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontWeight: 500 }}>
-          {label}
-        </span>
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
       </div>
-      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>
-        {value}
-      </span>
+      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
 
-// ─── SECTION CARD ─────────────────────────────
 function SectionCard({ title, children }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-      boxShadow: 'var(--shadow-sm)'
+      borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', boxShadow: 'var(--shadow-sm)'
     }}>
       <p style={{
         fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--text-muted)',
         textTransform: 'uppercase', letterSpacing: '0.08em',
         marginBottom: 'var(--space-3)', paddingBottom: 'var(--space-3)',
         borderBottom: '1px solid var(--border)'
-      }}>
-        {title}
-      </p>
+      }}>{title}</p>
       {children}
     </div>
   )
 }
 
-// ─── MINI STAT ────────────────────────────────
 function MiniStat({ label, value, color = 'var(--primary)' }) {
   return (
     <div style={{
-      flex: 1, padding: 'var(--space-4)',
-      background: 'var(--surface-2)', borderRadius: 'var(--radius-md)',
-      border: '1px solid var(--border)', textAlign: 'center'
+      flex: 1, padding: 'var(--space-4)', background: 'var(--surface-2)',
+      borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textAlign: 'center'
     }}>
-      <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-2xl)', fontWeight: 800, color, lineHeight: 1 }}>
-        {value}
-      </p>
+      <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-2xl)', fontWeight: 800, color, lineHeight: 1 }}>{value}</p>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{label}</p>
     </div>
   )
 }
 
-// ─── EDIT MEMBER MODAL ────────────────────────
+// ─── EDIT MEMBER MODAL ─────────────────────────
+// Loads departments + cell groups inside the modal so it's always fresh
 function EditMemberModal({ member, api, onSuccess, onClose }) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
-  
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
+  const [departments, setDepartments] = useState([])
+  const [cellGroups, setCellGroups]   = useState([])
+  const [lookupLoading, setLookupLoading] = useState(true)
+
+  const deptId  = member.departmentId?._id  || member.departmentId  || ''
+  const groupId = member.cellGroupId?._id   || member.cellGroupId   || ''
+
   const [form, setForm] = useState({
     firstName:         member.firstName         || '',
     lastName:          member.lastName          || '',
@@ -136,6 +130,8 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
     occupation:        member.occupation        || '',
     address:           member.address           || '',
     memberStatus:      member.memberStatus      || 'active',
+    departmentId:      String(deptId),
+    cellGroupId:       String(groupId),
     baptized:          member.baptized          || false,
     baptismDate:       member.baptismDate
       ? new Date(member.baptismDate).toISOString().split('T')[0] : '',
@@ -144,9 +140,27 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
     nextOfKinRelation: member.nextOfKinRelation || '',
   })
 
+  // Load lookups on mount
+  useEffect(() => {
+    Promise.all([api('/departments'), api('/departments/cellgroups')])
+      .then(([dRes, gRes]) => {
+        if (dRes.success) setDepartments(dRes.departments)
+        if (gRes.success) setCellGroups(gRes.cellGroups)
+      })
+      .catch(console.error)
+      .finally(() => setLookupLoading(false))
+  }, [api])
+
+  // Cell groups filtered to selected department
+  const filteredGroups = form.departmentId
+    ? cellGroups.filter(g => String(g.departmentId?._id || g.departmentId) === form.departmentId)
+    : cellGroups
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    const next = { ...form, [name]: type === 'checkbox' ? checked : value }
+    if (name === 'departmentId') next.cellGroupId = ''
+    setForm(next)
     setError('')
   }
 
@@ -160,14 +174,19 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
     try {
       const data = await api(`/members/${member._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          departmentId: form.departmentId || null,
+          cellGroupId:  form.cellGroupId  || null,
+        })
       })
       if (!data.success) { setError(data.message); return }
       onSuccess(data.member)
     } catch { setError('Cannot connect to server.') }
     finally { setLoading(false) }
   }
+
+  if (lookupLoading) return <LoadingSpinner message="Loading…" />
 
   return (
     <form onSubmit={handleSubmit} className="member-form">
@@ -249,6 +268,26 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
 
       <div className="form-section">
         <p className="form-section-title">Church Information</p>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Department</label>
+            <select name="departmentId" value={form.departmentId} onChange={handleChange} className="form-input">
+              <option value="">No department</option>
+              {departments.map(d => (
+                <option key={d._id} value={d._id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Cell Group</label>
+            <select name="cellGroupId" value={form.cellGroupId} onChange={handleChange} className="form-input">
+              <option value="">No cell group</option>
+              {filteredGroups.map(g => (
+                <option key={g._id} value={g._id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="form-group form-group-checkbox">
           <label className="checkbox-label">
             <input name="baptized" type="checkbox" checked={form.baptized} onChange={handleChange} />
@@ -285,7 +324,7 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
       <div className="form-actions">
         <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Saving...' : 'Save Changes'}
+          {loading ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
     </form>
@@ -336,58 +375,51 @@ function AttendanceTab({ memberId, api }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await api(`/members/${memberId}/attendance`)
-        if (data.success) setData(data)
-      } catch {}
-      finally { setLoading(false) }
-    }
-    load()
+    api(`/members/${memberId}/attendance`)
+      .then(d => { if (d.success) setData(d) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [memberId, api])
 
-  if (loading) return <LoadingSpinner message="Loading attendance..." />
+  if (loading) return <LoadingSpinner message="Loading attendance…" />
 
   const stats     = data?.stats || {}
-  const rateColor = stats.rate >= 75
-    ? 'var(--success)' : stats.rate >= 50
-    ? 'var(--warning)' : 'var(--danger)'
+  const rateColor = stats.rate >= 75 ? 'var(--success)' : stats.rate >= 50 ? 'var(--warning)' : 'var(--danger)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-
       <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-        <MiniStat label="Attendance Rate" value={`${stats.rate || 0}%`}      color={rateColor}        />
-        <MiniStat label="Total Attended"  value={stats.totalAttended || 0}   color="var(--primary)"   />
-        <MiniStat label="Last Attended"   value={timeAgo(stats.lastAttended)} color="var(--info)"     />
+        <MiniStat label="Attendance Rate" value={`${stats.rate || 0}%`}      color={rateColor}      />
+        <MiniStat label="Total Attended"  value={stats.totalAttended || 0}   color="var(--primary)" />
+        <MiniStat label="Last Attended"   value={timeAgo(stats.lastAttended)} color="var(--info)"   />
       </div>
 
-      {/* Rate bar */}
+      {stats.department && (
+        <div style={{
+          padding: 'var(--space-3) var(--space-4)', background: 'var(--surface-2)',
+          borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+          fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8
+        }}>
+          <Building2 size={14} /> Department: <strong style={{ color: 'var(--text-primary)' }}>{stats.department}</strong>
+        </div>
+      )}
+
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
-        boxShadow: 'var(--shadow-sm)'
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Consistency
-          </span>
-          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: rateColor }}>
-            {stats.rate || 0}%
-          </span>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Consistency</span>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: rateColor }}>{stats.rate || 0}%</span>
         </div>
         <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 999 }}>
-          <div style={{
-            height: '100%', width: `${stats.rate || 0}%`,
-            background: rateColor, borderRadius: 999, transition: 'width 1s ease'
-          }} />
+          <div style={{ height: '100%', width: `${stats.rate || 0}%`, background: rateColor, borderRadius: 999, transition: 'width 1s ease' }} />
         </div>
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
           {stats.totalAttended} present out of {stats.totalRecords} recorded services
         </p>
       </div>
 
-      {/* Service records */}
       {data?.serviceRecords?.length > 0 && (
         <SectionCard title="Service Attendance History">
           {data.serviceRecords.map((r, i) => {
@@ -399,17 +431,10 @@ function AttendanceTab({ memberId, api }) {
                 borderBottom: i < data.serviceRecords.length - 1 ? '1px solid var(--border)' : 'none'
               }}>
                 <div>
-                  <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {r.serviceId?.name || 'Service'}
-                  </p>
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {formatDate(r.serviceId?.date)}
-                  </p>
+                  <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{r.serviceId?.name || 'Service'}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDate(r.serviceId?.date)}</p>
                 </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: '3px 10px',
-                  borderRadius: 999, background: st.bg, color: st.color
-                }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: st.bg, color: st.color }}>
                   {st.label}
                 </span>
               </div>
@@ -418,7 +443,6 @@ function AttendanceTab({ memberId, api }) {
         </SectionCard>
       )}
 
-      {/* Event records */}
       {data?.eventRecords?.length > 0 && (
         <SectionCard title="Event Attendance History">
           {data.eventRecords.map((r, i) => {
@@ -430,17 +454,10 @@ function AttendanceTab({ memberId, api }) {
                 borderBottom: i < data.eventRecords.length - 1 ? '1px solid var(--border)' : 'none'
               }}>
                 <div>
-                  <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {r.eventId?.title || 'Event'}
-                  </p>
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {formatDate(r.eventId?.startDate)}
-                  </p>
+                  <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{r.eventId?.title || 'Event'}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDate(r.eventId?.startDate)}</p>
                 </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: '3px 10px',
-                  borderRadius: 999, background: st.bg, color: st.color
-                }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: st.bg, color: st.color }}>
                   {st.label}
                 </span>
               </div>
@@ -465,36 +482,26 @@ function GivingTab({ memberId, api }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await api(`/finance/member/${memberId}`)
-        if (data.success) setData(data)
-      } catch {}
-      finally { setLoading(false) }
-    }
-    load()
+    api(`/finance/member/${memberId}`)
+      .then(d => { if (d.success) setData(d) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [memberId, api])
 
-  if (loading) return <LoadingSpinner message="Loading giving history..." />
+  if (loading) return <LoadingSpinner message="Loading giving history…" />
 
   const offerings  = data?.offerings || []
   const totalGHS   = parseFloat(data?.totalGHS || 0)
   const now        = new Date()
-
   const yearTotal  = offerings
     .filter(o => new Date(o.date).getFullYear() === now.getFullYear())
     .reduce((sum, o) => sum + (o.amount / 100), 0)
-
   const monthTotal = offerings
-    .filter(o => {
-      const d = new Date(o.date)
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    })
+    .filter(o => { const d = new Date(o.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() })
     .reduce((sum, o) => sum + (o.amount / 100), 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-
       <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
         <MiniStat label="Total (All Time)" value={formatGHS(totalGHS)}   color="var(--success)" />
         <MiniStat label="This Year"        value={formatGHS(yearTotal)}  color="var(--primary)" />
@@ -510,17 +517,14 @@ function GivingTab({ memberId, api }) {
               borderBottom: i < Math.min(offerings.length, 15) - 1 ? '1px solid var(--border)' : 'none'
             }}>
               <div>
-                <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
                   {OFFERING_LABELS[o.offeringType] || o.offeringType}
                 </p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                   {formatDate(o.date)} · {o.paymentMethod?.replace('_', ' ')}
                 </p>
               </div>
-              <p style={{
-                fontFamily: 'var(--font-heading)', fontSize: 'var(--text-base)',
-                fontWeight: 700, color: 'var(--success)'
-              }}>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--success)' }}>
                 {formatGHS(o.amount / 100)}
               </p>
             </div>
@@ -538,37 +542,30 @@ function GivingTab({ memberId, api }) {
 
 // ─── MAIN PROFILE PAGE ────────────────────────
 export default function MemberProfile() {
-  const { id }    = useParams()
+  const { id }               = useParams()
   const { api, branchReady } = useApi()
-  const navigate  = useNavigate()
+  const navigate             = useNavigate()
 
   const [member, setMember]       = useState(null)
   const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const [showEdit, setShowEdit] = useState(false)
-
+  const [showEdit, setShowEdit]   = useState(false)
 
   useEffect(() => {
     if (!branchReady) return
-    const load = async () => {
-      try {
-        const data = await api(`/members/${id}`)
-        if (data.success) setMember(data.member)
-        else navigate('/members')
-      } catch {}
-      finally { setLoading(false) }
-    }
-    load()
+    api(`/members/${id}`)
+      .then(d => { if (d.success) setMember(d.member); else navigate('/members') })
+      .catch(() => navigate('/members'))
+      .finally(() => setLoading(false))
   }, [id, api, branchReady, navigate])
 
-  if (loading) return <LoadingSpinner message="Loading profile..." />
+  if (loading) return <LoadingSpinner message="Loading profile…" />
   if (!member)  return null
 
   const avatarColor = getAvatarColor(member.firstName + member.lastName)
   const statusStyle = STATUS_STYLES[member.memberStatus] || STATUS_STYLES.active
-  const initials    = `${member.firstName[0]}${member.lastName[0]}`
+  const initials    = `${member.firstName[0]}${member.lastName?.[0] || ''}`
 
-  // Smart indicators
   const indicators = []
   if (member.dateOfBirth) {
     const dob  = new Date(member.dateOfBirth)
@@ -599,8 +596,6 @@ export default function MemberProfile() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-
-      {/* Back */}
       <button onClick={() => navigate('/members')} style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
         color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 600,
@@ -609,17 +604,13 @@ export default function MemberProfile() {
         <ArrowLeft size={16} /> Back to Members
       </button>
 
-      {/* Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
-
         {/* ── LEFT SIDEBAR ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-
           {/* Profile card */}
           <div style={{
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)',
-            boxShadow: 'var(--shadow-sm)', textAlign: 'center'
+            borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)', boxShadow: 'var(--shadow-sm)', textAlign: 'center'
           }}>
             <div style={{
               width: 80, height: 80, borderRadius: '50%',
@@ -630,25 +621,13 @@ export default function MemberProfile() {
             }}>
               {initials}
             </div>
-
-            <h2 style={{
-              fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)',
-              fontWeight: 800, color: 'var(--text-primary)', marginBottom: 'var(--space-2)'
-            }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
               {member.firstName} {member.lastName}
             </h2>
-
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '3px 12px',
-              borderRadius: 999, background: statusStyle.bg, color: statusStyle.color
-            }}>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
               {statusStyle.label}
             </span>
-
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>
-              {member.memberId}
-            </p>
-
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>{member.memberId}</p>
             {member.departmentId && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 600 }}>
                 <Building2 size={12} /> {member.departmentId.name}
@@ -659,7 +638,6 @@ export default function MemberProfile() {
                 <Users size={12} /> {member.cellGroupId.name}
               </div>
             )}
-
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
               Member since {new Date(member.joinDate || member.createdAt)
                 .toLocaleDateString('en-GH', { month: 'long', year: 'numeric' })}
@@ -668,22 +646,11 @@ export default function MemberProfile() {
 
           {/* Smart indicators */}
           {indicators.length > 0 && (
-            <div style={{
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', boxShadow: 'var(--shadow-sm)'
-            }}>
-              <p style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-3)' }}>
-                Indicators
-              </p>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', boxShadow: 'var(--shadow-sm)' }}>
+              <p style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-3)' }}>Indicators</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 {indicators.map((ind, i) => (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                    padding: 'var(--space-2) var(--space-3)',
-                    borderRadius: 'var(--radius-md)',
-                    background: ind.bg, color: ind.color,
-                    fontSize: 'var(--text-xs)', fontWeight: 700
-                  }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--radius-md)', background: ind.bg, color: ind.color, fontSize: 'var(--text-xs)', fontWeight: 700 }}>
                     <span>{ind.emoji}</span><span>{ind.text}</span>
                   </div>
                 ))}
@@ -692,22 +659,16 @@ export default function MemberProfile() {
           )}
 
           {/* Quick actions */}
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', boxShadow: 'var(--shadow-sm)'
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-3)' }}>
-              Quick Actions
-            </p>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', boxShadow: 'var(--shadow-sm)' }}>
+            <p style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-3)' }}>Quick Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {quickActions.map(({ label, icon: Icon, action }) => (
                 <button key={label} onClick={action} style={{
                   display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
                   padding: 'var(--space-3)', borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border)', background: 'var(--surface)',
-                  color: 'var(--text-secondary)', fontSize: 'var(--text-sm)',
-                  fontWeight: 600, cursor: 'pointer', width: '100%', textAlign: 'left',
-                  transition: 'all var(--transition-fast)'
+                  color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 600,
+                  cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'all var(--transition-fast)'
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-primary)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)';   e.currentTarget.style.color = 'var(--text-secondary)' }}>
@@ -729,7 +690,6 @@ export default function MemberProfile() {
               </button>
             ))}
           </div>
-
           {activeTab === 'overview'   && <OverviewTab   member={member} />}
           {activeTab === 'attendance' && <AttendanceTab memberId={id} api={api} />}
           {activeTab === 'giving'     && <GivingTab     memberId={id} api={api} />}

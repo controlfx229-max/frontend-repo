@@ -1,32 +1,31 @@
-import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import useApi from '../../hooks/useApi'
 import {
-  UserPlus, Search, Phone, Calendar,
-  MoreVertical, ChevronLeft, ChevronRight,
-  Edit2, CheckCircle, Trash2, X
+  Plus, Users, Search, Edit2, Archive, Eye,
+  ChevronDown, ChevronUp, AlertCircle, CheckCircle,
+  Download, Upload, Filter
 } from 'lucide-react'
-import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
-import EmptyState from '../../components/ui/EmptyState'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import EmptyState from '../../components/ui/EmptyState'
 
+// ─── MEMBER FORM ──────────────────────────────
+function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGroups = [] }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
 
-// ─── MEMBER FORM (Add + Edit) ────────────────
-function MemberForm({ onSuccess, onClose, api, editing }) {
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState('')
-  const [showEdit, setShowEdit] = useState(false)
-  const [departments, setDepts]     = useState([])
-  const [cellGroups, setCellGroups] = useState([])
-  const [filteredGroups, setFilteredGroups] = useState([])
+  // Extract IDs safely whether the field is a populated object or a raw string/ObjectId
+  const deptId = editing?.departmentId?._id || editing?.departmentId || ''
+  const groupId = editing?.cellGroupId?._id  || editing?.cellGroupId  || ''
+
   const [form, setForm] = useState({
     firstName:         editing?.firstName         || '',
     lastName:          editing?.lastName          || '',
+    email:             editing?.email             || '',
     phone:             editing?.phone             || '',
     whatsapp:          editing?.whatsapp          || '',
-    email:             editing?.email             || '',
     gender:            editing?.gender            || '',
     dateOfBirth:       editing?.dateOfBirth
       ? new Date(editing.dateOfBirth).toISOString().split('T')[0] : '',
@@ -34,64 +33,59 @@ function MemberForm({ onSuccess, onClose, api, editing }) {
     occupation:        editing?.occupation        || '',
     address:           editing?.address           || '',
     memberStatus:      editing?.memberStatus      || 'active',
+    departmentId:      String(deptId),
+    cellGroupId:       String(groupId),
     baptized:          editing?.baptized          || false,
-    departmentId:      editing?.departmentId?._id || editing?.departmentId || '',
-    cellGroupId:       editing?.cellGroupId?._id  || editing?.cellGroupId  || '',
+    baptismDate:       editing?.baptismDate
+      ? new Date(editing.baptismDate).toISOString().split('T')[0] : '',
     nextOfKinName:     editing?.nextOfKinName     || '',
     nextOfKinPhone:    editing?.nextOfKinPhone    || '',
-    nextOfKinRelation: editing?.nextOfKinRelation || ''
+    nextOfKinRelation: editing?.nextOfKinRelation || '',
   })
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [dData, gData] = await Promise.all([
-          api('/departments'),
-          api('/departments/cellgroups')
-        ])
-        if (dData.success) setDepts(dData.departments)
-        if (gData.success) {
-          setCellGroups(gData.cellGroups)
-          filterGroups(gData.cellGroups, form.departmentId)
-        }
-      } catch (err) { console.error(err) }
-    }
-    fetchData()
-  }, [api])
-
-  function filterGroups(groups, deptId) {
-    if (!deptId) setFilteredGroups(groups)
-    else setFilteredGroups(groups.filter(g => !g.departmentId || g.departmentId?._id === deptId || g.departmentId === deptId))
-  }
+  // Filter cell groups to the chosen department
+  const filteredGroups = form.departmentId
+    ? cellGroups.filter(g =>
+        (g.departmentId?._id || g.departmentId) === form.departmentId
+      )
+    : cellGroups
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    if (name === 'departmentId') {
-      setForm(prev => ({ ...prev, departmentId: value, cellGroupId: '' }))
-      filterGroups(cellGroups, value)
-    } else {
-      setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
-    }
+    const next = { ...form, [name]: type === 'checkbox' ? checked : value }
+    // If department changed, clear cell group so stale group isn't sent
+    if (name === 'departmentId') next.cellGroupId = ''
+    setForm(next)
     setError('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.firstName || !form.lastName || !form.phone) { setError('First name, last name and phone are required.'); return }
+    if (!form.firstName.trim() || !form.phone.trim()) {
+      setError('First name and phone number are required.')
+      return
+    }
     setLoading(true)
     try {
-      const payload = { ...form }
-      if (!payload.departmentId) payload.departmentId = null
-      if (!payload.cellGroupId)  payload.cellGroupId  = null
-      
+      const payload = {
+        ...form,
+        dateOfBirth:  form.dateOfBirth  ? new Date(form.dateOfBirth)  : null,
+        baptismDate:  form.baptismDate  ? new Date(form.baptismDate)  : null,
+        departmentId: form.departmentId || null,
+        cellGroupId:  form.cellGroupId  || null,
+      }
       const data = await api(
         editing ? `/members/${editing._id}` : '/members',
         { method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload) }
       )
       if (!data.success) { setError(data.message); return }
       onSuccess(data.member)
-    } catch { setError('Cannot connect to server.') }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError('Cannot connect to server.')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -103,34 +97,33 @@ function MemberForm({ onSuccess, onClose, api, editing }) {
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">First Name *</label>
-            <input name="firstName" value={form.firstName} onChange={handleChange} className="form-input" placeholder="e.g. Kofi" />
+            <input name="firstName" value={form.firstName} onChange={handleChange}
+              className="form-input" placeholder="First name" required />
           </div>
           <div className="form-group">
-            <label className="form-label">Last Name *</label>
-            <input name="lastName" value={form.lastName} onChange={handleChange} className="form-input" placeholder="e.g. Mensah" />
+            <label className="form-label">Last Name</label>
+            <input name="lastName" value={form.lastName} onChange={handleChange}
+              className="form-input" placeholder="Last name" />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Phone *</label>
-            <input name="phone" value={form.phone} onChange={handleChange} className="form-input" placeholder="024XXXXXXX" />
+            <input name="phone" value={form.phone} onChange={handleChange}
+              className="form-input" placeholder="Phone number" required />
           </div>
           <div className="form-group">
             <label className="form-label">WhatsApp</label>
-            <input name="whatsapp" value={form.whatsapp} onChange={handleChange} className="form-input" placeholder="If different from phone" />
+            <input name="whatsapp" value={form.whatsapp} onChange={handleChange}
+              className="form-input" placeholder="WhatsApp number (optional)" />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange} className="form-input" placeholder="email@example.com" />
+            <input name="email" type="email" value={form.email} onChange={handleChange}
+              className="form-input" placeholder="Email address" />
           </div>
-          <div className="form-group">
-            <label className="form-label">Date of Birth</label>
-            <input name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={handleChange} className="form-input" />
-          </div>
-        </div>
-        <div className="form-row">
           <div className="form-group">
             <label className="form-label">Gender</label>
             <select name="gender" value={form.gender} onChange={handleChange} className="form-input">
@@ -138,6 +131,13 @@ function MemberForm({ onSuccess, onClose, api, editing }) {
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Date of Birth</label>
+            <input name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={handleChange}
+              className="form-input" />
           </div>
           <div className="form-group">
             <label className="form-label">Marital Status</label>
@@ -153,413 +153,383 @@ function MemberForm({ onSuccess, onClose, api, editing }) {
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Occupation</label>
-            <input name="occupation" value={form.occupation} onChange={handleChange} className="form-input" placeholder="e.g. Teacher, Engineer" />
+            <input name="occupation" value={form.occupation} onChange={handleChange}
+              className="form-input" placeholder="Occupation" />
           </div>
-          <div className="form-group">
-            <label className="form-label">Address</label>
-            <input name="address" value={form.address} onChange={handleChange} className="form-input" placeholder="e.g. Accra, Ghana" />
-          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Address</label>
+          <input name="address" value={form.address} onChange={handleChange}
+            className="form-input" placeholder="Home address" />
         </div>
       </div>
 
       <div className="form-section">
-        <p className="form-section-title">Church Assignment</p>
+        <p className="form-section-title">Church Information</p>
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Member Status</label>
+            <label className="form-label">Status</label>
             <select name="memberStatus" value={form.memberStatus} onChange={handleChange} className="form-input">
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="new_convert">New Convert</option>
               <option value="visitor">Visitor</option>
+              <option value="transferred">Transferred</option>
             </select>
           </div>
-          <div className="form-group form-group-checkbox">
-            <label className="form-label">Baptized?</label>
-            <label className="checkbox-label">
-              <input name="baptized" type="checkbox" checked={form.baptized} onChange={handleChange} />
-              <span>Yes, baptized</span>
-            </label>
-          </div>
-        </div>
-        <div className="form-row">
           <div className="form-group">
             <label className="form-label">Department</label>
             <select name="departmentId" value={form.departmentId} onChange={handleChange} className="form-input">
               <option value="">No department</option>
-              {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
+              {departments.map(d => (
+                <option key={d._id} value={d._id}>{d.name}</option>
+              ))}
             </select>
           </div>
+        </div>
+        <div className="form-row">
           <div className="form-group">
             <label className="form-label">Cell Group</label>
             <select name="cellGroupId" value={form.cellGroupId} onChange={handleChange} className="form-input">
               <option value="">No cell group</option>
-              {filteredGroups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+              {filteredGroups.map(g => (
+                <option key={g._id} value={g._id}>{g.name}</option>
+              ))}
             </select>
           </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Baptized?</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <input name="baptized" type="checkbox" checked={form.baptized} onChange={handleChange}
+                style={{ width: 18, height: 18, cursor: 'pointer' }} />
+              <span style={{ fontSize: 'var(--text-sm)' }}>Yes, I am baptized</span>
+            </div>
+          </div>
+          {form.baptized && (
+            <div className="form-group">
+              <label className="form-label">Baptism Date</label>
+              <input name="baptismDate" type="date" value={form.baptismDate} onChange={handleChange}
+                className="form-input" />
+            </div>
+          )}
         </div>
       </div>
 
       <div className="form-section">
         <p className="form-section-title">Emergency Contact</p>
+        <div className="form-group">
+          <label className="form-label">Next of Kin Name</label>
+          <input name="nextOfKinName" value={form.nextOfKinName} onChange={handleChange}
+            className="form-input" placeholder="Name" />
+        </div>
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Next of Kin Name</label>
-            <input name="nextOfKinName" value={form.nextOfKinName} onChange={handleChange} className="form-input" placeholder="Full name" />
+            <label className="form-label">Next of Kin Phone</label>
+            <input name="nextOfKinPhone" value={form.nextOfKinPhone} onChange={handleChange}
+              className="form-input" placeholder="Phone number" />
           </div>
           <div className="form-group">
             <label className="form-label">Relationship</label>
-            <input name="nextOfKinRelation" value={form.nextOfKinRelation} onChange={handleChange} className="form-input" placeholder="e.g. Spouse, Parent" />
+            <input name="nextOfKinRelation" value={form.nextOfKinRelation} onChange={handleChange}
+              className="form-input" placeholder="e.g. Spouse, Parent" />
           </div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Next of Kin Phone</label>
-          <input name="nextOfKinPhone" value={form.nextOfKinPhone} onChange={handleChange} className="form-input" placeholder="024XXXXXXX" />
         </div>
       </div>
 
       <div className="form-actions">
         <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? (editing ? 'Saving...' : 'Adding...') : (editing ? 'Save Changes' : 'Add Member')}
+          {loading ? (editing ? 'Saving...' : 'Adding...') : (editing ? 'Save Member' : 'Add Member')}
         </button>
       </div>
     </form>
   )
 }
 
-// ─── MEMBER PROFILE VIEW ─────────────────────
-function MemberProfileView({ member, onEdit, onArchive, onRemoveFromGroup }) {
-  const details = [
-    { label: 'Phone',       value: member.phone },
-    { label: 'WhatsApp',    value: member.whatsapp            || '—' },
-    { label: 'Email',       value: member.email               || '—' },
-    { label: 'Gender',      value: member.gender              || '—' },
-    { label: 'Occupation',  value: member.occupation          || '—' },
-    { label: 'Address',     value: member.address             || '—' },
-    { label: 'Department',  value: member.departmentId?.name  || '—' },
-    { label: 'Cell Group',  value: member.cellGroupId?.name   || '—', removable: !!member.cellGroupId },
-    { label: 'Baptized',    value: member.baptized ? 'Yes' : 'No' },
-    { label: 'Next of Kin', value: member.nextOfKinName       || '—' },
-    { label: 'NOK Phone',   value: member.nextOfKinPhone      || '—' },
-  ]
-
-  return (
-    <div className="member-profile-preview">
-      <div className="profile-preview-header">
-        <div className="profile-preview-avatar">
-          {member.firstName[0]}{member.lastName[0]}
-        </div>
-        <div style={{ flex: 1 }}>
-          <h2 className="profile-preview-name">{member.firstName} {member.lastName}</h2>
-          <p className="profile-preview-id">{member.memberId}</p>
-          <Badge status={member.memberStatus} />
-        </div>
-        <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
-          <button className="btn-outline" onClick={onEdit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Edit2 size={14} /> Edit
-          </button>
-          <button className="btn-danger" onClick={onArchive} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Trash2 size={14} /> Archive
-          </button>
-        </div>
-      </div>
-
-      <div className="profile-preview-details">
-        {details.map(({ label, value, removable }) => (
-          <div className="profile-detail-row" key={label}>
-            <span className="profile-detail-label">{label}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span className="profile-detail-value">{value}</span>
-              {removable && (
-                <button
-                  onClick={() => onRemoveFromGroup(member)}
-                  style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'var(--weight-semibold)', padding: '2px 6px', borderRadius: 'var(--radius-sm)' }}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── MEMBER ROW (Desktop) ────────────────────
-function MemberRow({ member, onView }) {
-  const initials   = `${member.firstName[0]}${member.lastName[0]}`.toUpperCase()
-  const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
-  return (
-    <tr className="member-row" onClick={() => onView(member)}>
-      <td>
-        <div className="member-cell-identity">
-          <div className="member-avatar">{initials}</div>
-          <div>
-            <p className="member-name">{member.firstName} {member.lastName}</p>
-            <p className="member-id">{member.memberId}</p>
-          </div>
-        </div>
-      </td>
-      <td><div className="member-cell-phone"><Phone size={13} color="var(--text-muted)" /><span>{member.phone}</span></div></td>
-      <td><span>{member.gender ? member.gender.charAt(0).toUpperCase() + member.gender.slice(1) : '—'}</span></td>
-      <td><Badge status={member.memberStatus} /></td>
-      <td><div className="member-cell-date"><Calendar size={13} color="var(--text-muted)" /><span>{formatDate(member.joinDate)}</span></div></td>
-      <td onClick={e => e.stopPropagation()}><button className="member-action-btn"><MoreVertical size={16} /></button></td>
-    </tr>
-  )
-}
-
-// ─── MEMBER CARD (Mobile) ────────────────────
-function MemberCard({ member, onView }) {
-  const initials = `${member.firstName[0]}${member.lastName[0]}`.toUpperCase()
-  return (
-    <div className="member-card" onClick={() => onView(member)}>
-      <div className="member-card-left">
-        <div className="member-avatar">{initials}</div>
-        <div>
-          <p className="member-name">{member.firstName} {member.lastName}</p>
-          <p className="member-id">{member.memberId}</p>
-          <p className="member-card-phone">{member.phone}</p>
-        </div>
-      </div>
-      <Badge status={member.memberStatus} />
-    </div>
-  )
-}
-
-// ─── MAIN MEMBERS PAGE ───────────────────────
+// ─── MAIN MEMBERS PAGE ────────────────────────
 export default function Members() {
   const { api, branchReady } = useApi()
   const navigate = useNavigate()
-  const [members, setMembers]               = useState([])
-  const [total, setTotal]                   = useState(0)
-  const [loading, setLoading]               = useState(true)
-  const [showAddModal, setShowAddModal]     = useState(false)
-  const [selectedMember, setSelectedMember] = useState(null)
-  const [editingMember, setEditingMember]   = useState(null)
-  const [successMsg, setSuccessMsg]         = useState('')
-  const [confirmArchive, setConfirmArchive] = useState(null)
-  const [confirmRemove, setConfirmRemove]   = useState(null)
-  const [archiving, setArchiving]           = useState(false)
-  const [removing, setRemoving]             = useState(false)
-  const [isMobile, setIsMobile]             = useState(window.innerWidth < 768)
-  const [search, setSearch]                 = useState('')
-  const [status, setStatus]                 = useState('')
-  const [gender, setGender]                 = useState('')
-  const [page, setPage]                     = useState(1)
-  const limit = 10
 
+  const [members, setMembers]         = useState([])
+  const [departments, setDepartments] = useState([])
+  const [cellGroups, setCellGroups]   = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [searchTerm, setSearchTerm]   = useState('')
+  const [filterDept, setFilterDept]   = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [page, setPage]               = useState(1)
+  const [total, setTotal]             = useState(0)
+  const [limit]                       = useState(20)
+  const [showModal, setShowModal]     = useState(false)
+  const [editing, setEditing]         = useState(null)
+  const [confirmArchive, setConfirmArchive] = useState(null)
+  const [successMsg, setSuccessMsg]   = useState('')
+
+  // Load departments + cell groups once branch is ready
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    if (!branchReady) return
+    const loadLookups = async () => {
+      try {
+        const [dRes, gRes] = await Promise.all([
+          api('/departments'),
+          api('/departments/cellgroups'),
+        ])
+        if (dRes.success) setDepartments(dRes.departments)
+        if (gRes.success) setCellGroups(gRes.cellGroups)
+      } catch (err) {
+        console.error('Failed to load lookups:', err)
+      }
+    }
+    loadLookups()
+  }, [api, branchReady])
 
   const fetchMembers = useCallback(async () => {
     if (!branchReady) return
-
     setLoading(true)
     try {
-      const params = new URLSearchParams({
-        page,
-        limit,
-        ...(search && { search }),
-        ...(status && { status }),
-        ...(gender && { gender })
-      })
+      const params = new URLSearchParams()
+      params.append('page', page)
+      params.append('limit', limit)
+      if (searchTerm)   params.append('search', searchTerm)
+      if (filterDept)   params.append('departmentId', filterDept)
+      if (filterStatus) params.append('status', filterStatus)
 
       const data = await api(`/members?${params}`)
-      if (data.success) { setMembers(data.members); setTotal(data.total) }
-    } catch (err) { console.error('❌ Failed to fetch members:', err) }
-    finally { setLoading(false) }
-  }, [api, branchReady, page, search, status, gender])
+      if (data.success) {
+        setMembers(data.members)
+        setTotal(data.total)
+      }
+    } catch (err) {
+      console.error('Failed to fetch members:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [api, branchReady, page, limit, searchTerm, filterDept, filterStatus])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchMembers() }, [fetchMembers])
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setPage(1) }, [search, status, gender, branchReady])
 
-  const showSuccess = (msg) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 4000) }
-
-  const handleAddSuccess = () => {
-    setShowAddModal(false)
-    fetchMembers()
-    showSuccess('Member added successfully.')
-  }
-
-  const handleEditSuccess = (updated) => {
-    setEditingMember(null)
-    setSelectedMember(updated)
-    fetchMembers()
-    showSuccess('Member updated successfully.')
+  const showSuccess = (msg) => {
+    setSuccessMsg(msg)
+    setTimeout(() => setSuccessMsg(''), 3000)
   }
 
   const handleArchive = async () => {
-    setArchiving(true)
     try {
-      await api(`/members/${confirmArchive._id}`, { method: 'DELETE' })
-      setConfirmArchive(null)
-      setSelectedMember(null)
-      fetchMembers()
-      showSuccess('Member archived successfully.')
-    } catch {}
-    finally { setArchiving(false) }
-  }
-
-  const handleRemoveFromGroup = async () => {
-    setRemoving(true)
-    try {
-      const data = await api(`/members/${confirmRemove._id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ cellGroupId: null })
-      })
+      const data = await api(`/members/${confirmArchive._id}`, { method: 'DELETE' })
       if (data.success) {
-        setSelectedMember(data.member)
-        setConfirmRemove(null)
+        setConfirmArchive(null)
         fetchMembers()
-        showSuccess('Member removed from cell group.')
+        showSuccess('Member archived successfully.')
       }
-    } catch {}
-    finally { setRemoving(false) }
+    } catch (err) {
+      console.error('Failed to archive member:', err)
+    }
   }
 
-  const totalPages = Math.ceil(total / limit)
+  const handleSuccess = () => {
+    setShowModal(false)
+    setEditing(null)
+    fetchMembers()
+    showSuccess(editing ? 'Member updated successfully.' : 'Member added successfully.')
+  }
+
+  const STATUS_COLORS = {
+    active:      { bg: '#D1FAE5', color: '#065F46' },
+    inactive:    { bg: '#FEE2E2', color: '#991B1B' },
+    new_convert: { bg: '#DBEAFE', color: '#1E40AF' },
+    visitor:     { bg: '#F1F5F9', color: '#475569' },
+    transferred: { bg: '#FEF3C7', color: '#92400E' },
+  }
 
   return (
-    <div className="members-page">
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {successMsg && (
-        <div className="success-toast animate-slideUp">
-          <CheckCircle size={16} /> {successMsg}
-        </div>
+        <div className="success-toast"><CheckCircle size={16} /> {successMsg}</div>
       )}
 
       <div className="page-header">
         <div>
           <h1 className="page-title">Members</h1>
-          <p className="page-subtitle">{total} {total === 1 ? 'member' : 'members'} in your church</p>
+          <p className="page-subtitle">{total} total members</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          <UserPlus size={16} /> Add Member
+        <button className="btn-primary" onClick={() => { setEditing(null); setShowModal(true) }}>
+          <Plus size={16} /> Add Member
         </button>
       </div>
 
-      <div className="filters-bar">
-        <div className="search-wrap">
-          <Search size={16} className="search-icon" />
-          <input type="text" placeholder="Search by name, phone or ID..." value={search}
-            onChange={e => setSearch(e.target.value)} className="search-input" />
-        </div>
-        <div className="filter-selects">
-          <select value={status} onChange={e => setStatus(e.target.value)} className="filter-select">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="new_convert">New Convert</option>
-            <option value="visitor">Visitor</option>
-          </select>
-          <select value={gender} onChange={e => setGender(e.target.value)} className="filter-select">
-            <option value="">All Gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </div>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
+          className="form-input"
+          placeholder="Search by name or phone..."
+          style={{ flex: 1, minWidth: 200 }}
+        />
+        <select
+          value={filterDept}
+          onChange={e => { setFilterDept(e.target.value); setPage(1) }}
+          className="form-input"
+          style={{ minWidth: 150 }}
+        >
+          <option value="">All Departments</option>
+          {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
+          className="form-input"
+          style={{ minWidth: 150 }}
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="new_convert">New Convert</option>
+          <option value="visitor">Visitor</option>
+        </select>
       </div>
 
-      <div className="members-content">
-        {loading ? <LoadingSpinner message="Loading members..." /> :
-         members.length === 0 ? (
-          <EmptyState title="No members found"
-            message={search ? `No results for "${search}".` : "Add your first member to get started."}
-            action={{ label: '+ Add Member', onClick: () => setShowAddModal(true) }} />
-        ) : isMobile ? (
-          <div className="member-cards-list">
-           {members.map(m => (
-  <MemberCard
-    key={m._id}
-    member={m}
-    onView={() => navigate(`/members/${m._id}`)}
-  />
-))}
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="members-table">
+      {loading ? (
+        <LoadingSpinner message="Loading members..." />
+      ) : members.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No members yet"
+          message="Add your first member to get started."
+          action={{ label: '+ Add Member', onClick: () => setShowModal(true) }}
+        />
+      ) : (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr><th>Member</th><th>Phone</th><th>Gender</th><th>Status</th><th>Joined</th><th></th></tr>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  {['Name', 'Phone', 'Department', 'Cell Group', 'Status', 'Actions'].map(h => (
+                    <th key={h} style={{
+                      padding: 'var(--space-3)', textAlign: h === 'Actions' ? 'center' : 'left',
+                      fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)'
+                    }}>{h}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
-              {members.map(m => (
-  <MemberRow
-    key={m._id}
-    member={m}
-    onView={() => navigate(`/members/${m._id}`)}
-  />
-))}
+                {members.map(member => {
+                  const sc = STATUS_COLORS[member.memberStatus] || STATUS_COLORS.active
+                  return (
+                    <tr key={member._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>
+                          {member.firstName} {member.lastName}
+                        </strong>
+                        <br />
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                          {member.memberId}
+                        </span>
+                      </td>
+                      <td style={{ padding: 'var(--space-3)', fontSize: 'var(--text-sm)' }}>
+                        {member.phone}
+                      </td>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        {member.departmentId ? (
+                          <span style={{
+                            padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                            background: (member.departmentId?.color || '#4F46E5') + '20',
+                            color: member.departmentId?.color || '#4F46E5',
+                            fontWeight: 700, fontSize: 'var(--text-xs)'
+                          }}>
+                            {member.departmentId.name}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                        {member.cellGroupId?.name || '—'}
+                      </td>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 999,
+                          background: sc.bg, color: sc.color,
+                          fontSize: 'var(--text-xs)', fontWeight: 700
+                        }}>
+                          {member.memberStatus?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td style={{ padding: 'var(--space-3)', textAlign: 'center' }}>
+                        <button
+                          onClick={() => navigate(`/members/${member._id}`)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', marginRight: 4 }}
+                          title="View Profile"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => { setEditing(member); setShowModal(true) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', marginRight: 4 }}
+                          title="Edit"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmArchive(member)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}
+                          title="Archive"
+                        >
+                          <Archive size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
-        )}
 
-        {totalPages > 1 && (
-          <div className="pagination">
-            <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-              <ChevronLeft size={16} />
+          {/* Pagination */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-outline">
+              Previous
             </button>
-            <span className="page-info">Page {page} of {totalPages}</span>
-            <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-              <ChevronRight size={16} />
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+              Page {page} of {Math.max(1, Math.ceil(total / limit))}
+            </span>
+            <button onClick={() => setPage(p => (p * limit < total ? p + 1 : p))} disabled={page * limit >= total} className="btn-outline">
+              Next
             </button>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* Add Member Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Member" size="lg">
-        <MemberForm api={api} onSuccess={handleAddSuccess} onClose={() => setShowAddModal(false)} />
+      {/* Add / Edit Modal */}
+      <Modal
+        open={showModal}
+        onClose={() => { setShowModal(false); setEditing(null) }}
+        title={editing ? 'Edit Member' : 'Add New Member'}
+        size="lg"
+      >
+        <MemberForm
+          api={api}
+          editing={editing}
+          departments={departments}
+          cellGroups={cellGroups}
+          onSuccess={handleSuccess}
+          onClose={() => { setShowModal(false); setEditing(null) }}
+        />
       </Modal>
 
-      {/* Member Profile Modal */}
-      <Modal open={!!selectedMember && !editingMember} onClose={() => setSelectedMember(null)} title="Member Profile" size="md">
-        {selectedMember && (
-          <MemberProfileView
-            member={selectedMember}
-            onEdit={() => setEditingMember(selectedMember)}
-            onArchive={() => setConfirmArchive(selectedMember)}
-            onRemoveFromGroup={() => setConfirmRemove(selectedMember)}
-          />
-        )}
-      </Modal>
-
-      {/* Edit Member Modal */}
-      <Modal open={!!editingMember} onClose={() => setEditingMember(null)} title="Edit Member" size="lg">
-        {editingMember && (
-          <MemberForm api={api} editing={editingMember} onSuccess={handleEditSuccess} onClose={() => setEditingMember(null)} />
-        )}
-      </Modal>
-
-      {/* Confirm Archive */}
       <ConfirmModal
         open={!!confirmArchive}
         onClose={() => setConfirmArchive(null)}
         onConfirm={handleArchive}
-        loading={archiving}
         title="Archive Member?"
-        message={confirmArchive ? `Archive ${confirmArchive.firstName} ${confirmArchive.lastName}? They won't appear in lists but all data is preserved.` : ''}
-        confirmLabel="Archive Member"
-      />
-
-      {/* Confirm Remove from Group */}
-      <ConfirmModal
-        open={!!confirmRemove}
-        onClose={() => setConfirmRemove(null)}
-        onConfirm={handleRemoveFromGroup}
-        loading={removing}
-        title="Remove from Cell Group?"
-        message={confirmRemove ? `Remove ${confirmRemove.firstName} ${confirmRemove.lastName} from their cell group? They will remain a church member.` : ''}
-        confirmLabel="Remove"
+        message={confirmArchive
+          ? `Archive ${confirmArchive.firstName} ${confirmArchive.lastName}? Their data will be retained.`
+          : ''}
+        confirmLabel="Archive"
       />
     </div>
   )

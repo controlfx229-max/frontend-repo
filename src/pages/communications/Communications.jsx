@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import useApi from '../../hooks/useApi'
 import {
   Send, Clock, FileText, Users, CheckCircle,
-  MessageSquare, Megaphone, Plus, Edit2,
-  Trash2, Copy, ChevronDown, ChevronUp, AlertCircle
+  MessageSquare, Plus, Edit2, Trash2,
+  ChevronDown, ChevronUp, AlertCircle
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
@@ -73,10 +73,10 @@ function TemplateForm({ api, editing, onSuccess, onClose }) {
     if (!form.name.trim() || !form.body.trim()) { setError('Name and body are required.'); return }
     setLoading(true)
     try {
-      const data = await api(editing ? `/communications/templates/${editing._id}` : '/communications/templates', {
-        method: editing ? 'PUT' : 'POST',
-        body: JSON.stringify(form)
-      })
+      const data = await api(
+        editing ? `/communications/templates/${editing._id}` : '/communications/templates',
+        { method: editing ? 'PUT' : 'POST', body: JSON.stringify(form) }
+      )
       if (!data.success) { setError(data.message); return }
       onSuccess()
     } catch { setError('Cannot connect to server.') }
@@ -132,45 +132,73 @@ function ComposeTab({ api, branchReady }) {
   const [departments, setDepartments] = useState([])
   const [cellGroups, setCellGroups]   = useState([])
   const [templates, setTemplates]     = useState([])
-  const [preview, setPreview]         = useState(null)
+  const [preview, setPreview]         = useState(null)   // { count, names[] }
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
   const [success, setSuccess]         = useState('')
   const [form, setForm] = useState({
-    type: 'sms', body: '',
-    audienceType: 'all', departmentId: '', cellGroupId: '', memberStatus: ''
+    type:         'sms',
+    body:         '',
+    audienceType: 'all',
+    departmentId: '',
+    cellGroupId:  '',
+    memberStatus: '',
   })
+
+  // Debounce ref so preview doesn't fire on every keystroke
+  const previewTimer = useRef(null)
 
   useEffect(() => {
     if (!branchReady) return
-    const load = async () => {
-      try {
-        const [d, g, t] = await Promise.all([
-          api('/departments'),
-          api('/departments/cellgroups'),
-          api('/communications/templates')
-        ])
-        if (d.success) setDepartments(d.departments)
-        if (g.success) setCellGroups(g.cellGroups)
-        if (t.success) setTemplates(t.templates)
-      } catch (err) { console.error(err) }
-    }
-    load()
+    Promise.all([
+      api('/departments'),
+      api('/departments/cellgroups'),
+      api('/communications/templates'),
+    ]).then(([d, g, t]) => {
+      if (d.success) setDepartments(d.departments)
+      if (g.success) setCellGroups(g.cellGroups)
+      if (t.success) setTemplates(t.templates)
+    }).catch(console.error)
   }, [api, branchReady])
 
-  const buildAudience = () => ({
-    type: form.audienceType,
-    departmentId: form.departmentId || undefined,
-    cellGroupId:  form.cellGroupId  || undefined,
-    memberStatus: form.memberStatus || undefined
+  // Build audience object from current form state
+  const buildAudience = (f = form) => ({
+    type:         f.audienceType,
+    departmentId: f.audienceType === 'department' ? f.departmentId || undefined : undefined,
+    cellGroupId:  f.audienceType === 'cell_group' ? f.cellGroupId  || undefined : undefined,
+    memberStatus: f.audienceType === 'status'     ? f.memberStatus || undefined : undefined,
   })
 
-  const handlePreview = async () => {
-    const data = await api('/communications/preview-audience', {
-      method: 'POST',
-      body: JSON.stringify({ audience: buildAudience() })
-    })
-    if (data.success) setPreview(data)
+  // Auto-refresh preview whenever audience selection changes
+  const refreshPreview = useCallback(async (f) => {
+    const audience = buildAudience(f)
+    // Don't preview if a sub-selection is still missing
+    if (f.audienceType === 'department' && !f.departmentId) { setPreview(null); return }
+    if (f.audienceType === 'cell_group' && !f.cellGroupId)  { setPreview(null); return }
+    setPreviewLoading(true)
+    try {
+      const data = await api('/communications/preview-audience', {
+        method: 'POST',
+        body: JSON.stringify({ audience })
+      })
+      if (data.success) setPreview(data)
+    } catch {}
+    finally { setPreviewLoading(false) }
+  }, [api]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleFormChange = (field, value) => {
+    const next = { ...form, [field]: value }
+    // Reset sub-selections when audience type changes
+    if (field === 'audienceType') {
+      next.departmentId = ''
+      next.cellGroupId  = ''
+      next.memberStatus = ''
+    }
+    setForm(next)
+    setPreview(null)
+    clearTimeout(previewTimer.current)
+    previewTimer.current = setTimeout(() => refreshPreview(next), 400)
   }
 
   const handleSend = async () => {
@@ -183,71 +211,127 @@ function ComposeTab({ api, branchReady }) {
         body: JSON.stringify({ type: form.type, body: form.body, audience: buildAudience() })
       })
       if (!data.success) { setError(data.message); return }
-      setSuccess(data.message)
+      setSuccess(data.message || 'Message sent successfully.')
       setForm(f => ({ ...f, body: '' }))
       setPreview(null)
     } catch { setError('Cannot connect to server.') }
     finally { setLoading(false) }
   }
 
+  const recipientLabel = previewLoading
+    ? 'Calculating recipients…'
+    : preview != null
+      ? `${preview.count} recipient${preview.count === 1 ? '' : 's'} will receive this message`
+      : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      {error && <div className="form-error">{error}</div>}
+      {error   && <div className="form-error"><AlertCircle size={14} /> {error}</div>}
       {success && <div className="success-toast"><CheckCircle size={16} /> {success}</div>}
 
+      {/* Audience */}
       <div className="form-section">
         <p className="form-section-title">Audience</p>
+
         <div className="form-group">
+          <label className="form-label">Send to</label>
           <select className="form-input" value={form.audienceType}
-            onChange={e => setForm(p => ({ ...p, audienceType: e.target.value }))}>
-            {AUDIENCE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.emoji} {o.label}</option>)}
+            onChange={e => handleFormChange('audienceType', e.target.value)}>
+            {AUDIENCE_OPTIONS.map(o => (
+              <option key={o.id} value={o.id}>{o.emoji} {o.label}</option>
+            ))}
           </select>
         </div>
+
         {form.audienceType === 'department' && (
-          <select className="form-input" value={form.departmentId}
-            onChange={e => setForm(p => ({ ...p, departmentId: e.target.value }))}>
-            <option value="">Select department</option>
-            {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
-          </select>
+          <div className="form-group">
+            <label className="form-label">Department</label>
+            <select className="form-input" value={form.departmentId}
+              onChange={e => handleFormChange('departmentId', e.target.value)}>
+              <option value="">— Select department —</option>
+              {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
+            </select>
+          </div>
         )}
+
         {form.audienceType === 'cell_group' && (
-          <select className="form-input" value={form.cellGroupId}
-            onChange={e => setForm(p => ({ ...p, cellGroupId: e.target.value }))}>
-            <option value="">Select cell group</option>
-            {cellGroups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
-          </select>
+          <div className="form-group">
+            <label className="form-label">Cell Group</label>
+            <select className="form-input" value={form.cellGroupId}
+              onChange={e => handleFormChange('cellGroupId', e.target.value)}>
+              <option value="">— Select cell group —</option>
+              {cellGroups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
+            </select>
+          </div>
         )}
+
         {form.audienceType === 'status' && (
-          <select className="form-input" value={form.memberStatus}
-            onChange={e => setForm(p => ({ ...p, memberStatus: e.target.value }))}>
-            {MEMBER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
+          <div className="form-group">
+            <label className="form-label">Member Status</label>
+            <select className="form-input" value={form.memberStatus}
+              onChange={e => handleFormChange('memberStatus', e.target.value)}>
+              <option value="">— Select status —</option>
+              {MEMBER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
         )}
-        <button type="button" className="btn-secondary" onClick={handlePreview} style={{ marginTop: 8 }}>
-          <Users size={14} /> Preview Audience
-        </button>
-        {preview && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{preview.count} recipient(s)</p>}
+
+        {/* Recipient count badge */}
+        {recipientLabel && (
+          <div style={{
+            marginTop: 'var(--space-2)', padding: 'var(--space-2) var(--space-3)',
+            background: preview?.count > 0 ? '#DBEAFE' : '#FEF3C7',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--text-sm)', fontWeight: 600,
+            color: preview?.count > 0 ? '#1E40AF' : '#92400E',
+            display: 'flex', alignItems: 'center', gap: 'var(--space-2)'
+          }}>
+            <Users size={14} /> {recipientLabel}
+          </div>
+        )}
       </div>
 
+      {/* Message */}
       <div className="form-section">
         <p className="form-section-title">Message</p>
-        {templates.length > 0 && (
-          <select className="form-input" onChange={e => {
-            const t = templates.find(x => x._id === e.target.value)
-            if (t) setForm(p => ({ ...p, body: t.body }))
-          }}>
-            <option value="">Use a template...</option>
-            {templates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-          </select>
-        )}
-        <textarea className="form-input" rows={6} value={form.body}
-          onChange={e => setForm(p => ({ ...p, body: e.target.value }))}
-          placeholder="Type your message. Use {{firstName}} for personalization." />
-        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{form.body.length} / {SMS_LIMIT} chars</p>
+
+        <div className="form-row" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="form-group">
+            <label className="form-label">Message Type</label>
+            <select className="form-input" value={form.type}
+              onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+              <option value="sms">SMS</option>
+              <option value="announcement">Announcement</option>
+            </select>
+          </div>
+          {templates.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">Use Template</label>
+              <select className="form-input" defaultValue=""
+                onChange={e => {
+                  const t = templates.find(x => x._id === e.target.value)
+                  if (t) setForm(f => ({ ...f, body: t.body }))
+                }}>
+                <option value="">— Select template —</option>
+                {templates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <textarea className="form-input" rows={6} value={form.body}
+            onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
+            placeholder={`Type your message here. Use {{firstName}} for personalisation.`} />
+          <p style={{ fontSize: 11, color: form.body.length > SMS_LIMIT ? 'var(--danger)' : 'var(--text-muted)', marginTop: 4 }}>
+            {form.body.length} / {SMS_LIMIT} chars {form.type === 'sms' && form.body.length > SMS_LIMIT ? '— will split into multiple SMS' : ''}
+          </p>
+        </div>
       </div>
 
-      <button className="btn-primary" onClick={handleSend} disabled={loading}>
-        <Send size={16} /> {loading ? 'Sending...' : 'Send Message'}
+      <button className="btn-primary" onClick={handleSend}
+        disabled={loading || !form.body.trim() || (preview != null && preview.count === 0)}>
+        <Send size={16} /> {loading ? 'Sending…' : `Send${preview?.count ? ` to ${preview.count} member${preview.count > 1 ? 's' : ''}` : ''}`}
       </button>
     </div>
   )
@@ -255,7 +339,7 @@ function ComposeTab({ api, branchReady }) {
 
 // ─── HISTORY TAB ──────────────────────────────
 function HistoryTab({ api, branchReady }) {
-  const [messages, setMessages]   = useState([])
+  const [messages, setMessages] = useState([])
   const [loading, setLoading]   = useState(true)
   const [typeFilter, setTypeFilter] = useState('')
   const [expanded, setExpanded]   = useState(null)
@@ -272,10 +356,9 @@ function HistoryTab({ api, branchReady }) {
     finally { setLoading(false) }
   }, [api, branchReady, typeFilter])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchMessages() }, [fetchMessages])
 
-  if (loading) return <LoadingSpinner message="Loading history..." />
+  if (loading) return <LoadingSpinner message="Loading history…" />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -291,22 +374,31 @@ function HistoryTab({ api, branchReady }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {messages.map(msg => {
-            const statusStyle = MESSAGE_STATUS_STYLES[msg.status] || MESSAGE_STATUS_STYLES.draft
+            const ss = MESSAGE_STATUS_STYLES[msg.status] || MESSAGE_STATUS_STYLES.draft
             const isOpen = expanded === msg._id
             return (
-              <div key={msg._id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+              <div key={msg._id} style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-lg)', overflow: 'hidden'
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-4)', cursor: 'pointer' }}
                   onClick={() => setExpanded(isOpen ? null : msg._id)}>
                   <div>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
-                    <p style={{ marginTop: 8, fontSize: 'var(--text-sm)' }}>{msg.body.slice(0, 80)}{msg.body.length > 80 ? '...' : ''}</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>👥 {msg.totalRecipients} · {timeAgo(msg.createdAt)}</p>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ss.bg, color: ss.color }}>
+                      {ss.label}
+                    </span>
+                    <p style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                      {msg.body.slice(0, 80)}{msg.body.length > 80 ? '…' : ''}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      👥 {msg.totalRecipients} · {timeAgo(msg.createdAt)}
+                    </p>
                   </div>
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
                 {isOpen && (
                   <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}>
-                    <p style={{ fontSize: 'var(--text-sm)' }}>{msg.body}</p>
+                    <p style={{ fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap' }}>{msg.body}</p>
                   </div>
                 )}
               </div>
@@ -338,15 +430,12 @@ function TemplatesTab({ api, branchReady }) {
     finally { setLoading(false) }
   }, [api, branchReady])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchTemplates() }, [fetchTemplates])
 
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      await api(`/communications/templates/${confirmDelete._id}`, {
-        method: 'DELETE', 
-      })
+      await api(`/communications/templates/${confirmDelete._id}`, { method: 'DELETE' })
       setConfirm(null)
       fetchTemplates()
       setSuccess('Template deleted.')
@@ -355,18 +444,14 @@ function TemplatesTab({ api, branchReady }) {
     finally { setDeleting(false) }
   }
 
-  if (loading) return <LoadingSpinner message="Loading templates..." />
+  if (loading) return <LoadingSpinner message="Loading templates…" />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-
       {successMsg && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-4)', background: 'var(--success-bg)', borderRadius: 'var(--radius-md)', color: 'var(--success-text)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
-          <CheckCircle size={16} /> {successMsg}
-        </div>
+        <div className="success-toast"><CheckCircle size={16} /> {successMsg}</div>
       )}
 
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button className="btn-primary" onClick={() => { setEditing(null); setShowModal(true) }}>
           <Plus size={16} /> New Template
@@ -377,21 +462,20 @@ function TemplatesTab({ api, branchReady }) {
         <EmptyState icon={FileText} title="No templates yet"
           message="Create reusable message templates." />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
           {templates.map(t => {
             const cat = TEMPLATE_CATEGORIES[t.category] || TEMPLATE_CATEGORIES.custom
             return (
               <div key={t._id} style={{
                 background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-                boxShadow: 'var(--shadow-sm)'
+                borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', boxShadow: 'var(--shadow-sm)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
                   <div>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: cat.color + '18', color: cat.color, display: 'inline-block', marginBottom: 6 }}>
                       {cat.label}
                     </span>
-                    <p style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
                       {t.name}
                     </p>
                   </div>
@@ -406,7 +490,7 @@ function TemplatesTab({ api, branchReady }) {
                   </div>
                 </div>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  {t.body.slice(0, 120)}{t.body.length > 120 ? '...' : ''}
+                  {t.body.slice(0, 120)}{t.body.length > 120 ? '…' : ''}
                 </p>
               </div>
             )
@@ -423,8 +507,9 @@ function TemplatesTab({ api, branchReady }) {
 
       <ConfirmModal open={!!confirmDelete} onClose={() => setConfirm(null)}
         onConfirm={handleDelete} loading={deleting}
-        title="Delete Template?" confirmLabel="Delete"
-        message={confirmDelete ? `Delete "${confirmDelete.name}"?` : ''} />
+        title="Delete Template?"
+        message={confirmDelete ? `Delete "${confirmDelete.name}"?` : ''}
+        confirmLabel="Delete" />
     </div>
   )
 }
@@ -442,7 +527,6 @@ export default function Communications() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-
       <div className="page-header">
         <div>
           <h1 className="page-title">Communications</h1>
@@ -450,14 +534,12 @@ export default function Communications() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="settings-tabs">
         {TABS.map(tab => (
           <button key={tab.id}
             className={`settings-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}>
-            <tab.icon size={16} />
-            <span>{tab.label}</span>
+            <tab.icon size={16} /><span>{tab.label}</span>
           </button>
         ))}
       </div>
@@ -465,7 +547,6 @@ export default function Communications() {
       {activeTab === 'compose'   && <ComposeTab   api={api} branchReady={branchReady} />}
       {activeTab === 'history'   && <HistoryTab   api={api} branchReady={branchReady} />}
       {activeTab === 'templates' && <TemplatesTab api={api} branchReady={branchReady} />}
-
     </div>
   )
 }
