@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
 
       // ── Suspended org — force logout immediately ──
       if (r.status === 403 && data?.code === 'ACCOUNT_SUSPENDED') {
-        logout(data.message)
+        logout(typeof data.message === 'string' ? data.message : 'You have been logged out.')
         return
       }
 
@@ -131,7 +131,7 @@ export function AuthProvider({ children }) {
     if (res.status === 403) {
       const data = await res.clone().json().catch(() => null)
       if (data?.code === 'ACCOUNT_SUSPENDED') {
-        logout(data.message)
+        logout(typeof data.message === 'string' ? data.message : 'You have been logged out.')
         return res
       }
     }
