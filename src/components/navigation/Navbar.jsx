@@ -5,7 +5,7 @@ import {
   GitBranch, Check, Users, Building2,
   LayoutDashboard, CalendarCheck, Wallet,
   Calendar, BarChart3, Megaphone, Globe,
-  Flag, Repeat2, BookOpen, UserPlus
+  Flag, Repeat2, BookOpen, UserPlus, Settings as SettingsIcon
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useBranch } from '../../context/BranchContext'
@@ -26,7 +26,7 @@ const APP_PAGES = [
   { label: 'Pledges',        path: '/pledges',         icon: Flag,            keywords: ['commitment', 'vow', 'giving'] },
   { label: 'Automations',    path: '/automations',     icon: Repeat2,         keywords: ['auto', 'birthday', 'trigger', 'reminder'] },
   { label: 'Audit Log',      path: '/audit',           icon: BookOpen,        keywords: ['history', 'changes', 'log'] },
-  { label: 'Settings',       path: '/settings',        icon: Settings,        keywords: ['profile', 'church', 'account', 'plan', 'billing'] },
+  { label: 'Settings',       path: '/settings',        icon: SettingsIcon,        keywords: ['profile', 'church', 'account', 'plan', 'billing'] },
   { label: 'Billing',        path: '/billing',         icon: Wallet,          keywords: ['subscription', 'plan', 'payment', 'renew'] },
   { label: 'Add Member',     path: '/members?add=true',icon: UserPlus,        keywords: ['new member', 'register member'] },
 ]
