@@ -2,7 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Menu, Bell, Search, X, ChevronDown,
-  GitBranch, Check, Users, Building2
+  GitBranch, Check, Users, Building2,
+  LayoutDashboard, CalendarCheck, Wallet,
+  Calendar, BarChart3, Megaphone, Globe,
+  Flag, Repeat2, BookOpen, UserPlus
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useBranch } from '../../context/BranchContext'
