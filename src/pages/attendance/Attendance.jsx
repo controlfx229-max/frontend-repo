@@ -639,7 +639,6 @@ function ServiceCard({ service, onTakeAttendance, onView }) {
     </div>
   )
 }
-export default TakeAttendanceModal
 
 // ─── MAIN ATTENDANCE PAGE ────────────────────
 export default function Attendance() {

@@ -250,7 +250,7 @@ function SearchModal({ api, branchReady, onClose }) {
   )
 }
  
-export default SearchModal 
+
 // ─── BRANCH SWITCHER ──────────────────────────
 function BranchSwitcher() {
   const { branches, activeBranch, switchBranch, canSeeAllBranches, loading } = useBranch()
