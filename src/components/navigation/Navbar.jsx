@@ -565,7 +565,7 @@ export default function Navbar({ onMenuClick }) {
             {showProfile && (
               <ProfileDropdown
                 user={user}
-                onLogout={logout}
+                onLogout={() => logout()}
                 onClose={() => setShowProfile(false)}
               />
             )}
