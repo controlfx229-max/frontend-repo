@@ -30,7 +30,7 @@ const APP_PAGES = [
   { label: 'Billing',        path: '/billing',         icon: Wallet,          keywords: ['subscription', 'plan', 'payment', 'renew'] },
   { label: 'Add Member',     path: '/members?add=true',icon: UserPlus,        keywords: ['new member', 'register member'] },
 ]
- 
+
 function SearchModal({ api, branchReady, onClose }) {
   const [query, setQuery]           = useState('')
   const [memberResults, setMembers] = useState([])
@@ -39,7 +39,7 @@ function SearchModal({ api, branchReady, onClose }) {
   const [hasSearched, setHasSearched] = useState(false)
   const inputRef  = useRef(null)
   const navigate  = useNavigate()
- 
+
   // Focus on open + ESC to close
   useEffect(() => {
     inputRef.current?.focus()
@@ -47,25 +47,25 @@ function SearchModal({ api, branchReady, onClose }) {
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
- 
+
   // Search logic — debounced
   useEffect(() => {
     const q = query.trim().toLowerCase()
- 
+
     if (!q || q.length < 2) {
       setMembers([])
       setPages([])
       setHasSearched(false)
       return
     }
- 
+
     // ── Page search (instant, no API) ──
     const matchedPages = APP_PAGES.filter(p =>
       p.label.toLowerCase().includes(q) ||
       p.keywords.some(k => k.includes(q))
     ).slice(0, 4)
     setPages(matchedPages)
- 
+
     // ── Member search (API) ──
     if (!branchReady) return
     const timer = setTimeout(async () => {
@@ -79,22 +79,22 @@ function SearchModal({ api, branchReady, onClose }) {
         setHasSearched(true)
       }
     }, 300)
- 
+
     return () => clearTimeout(timer)
   }, [query, api, branchReady])
- 
+
   const goTo = useCallback((path) => {
     onClose()
     navigate(path)
   }, [navigate, onClose])
- 
+
   const hasResults = memberResults.length > 0 || pageResults.length > 0
   const isEmpty    = hasSearched && !loading && !hasResults
- 
+
   return (
     <div className="search-modal-overlay" onClick={onClose}>
       <div className="search-modal" onClick={e => e.stopPropagation()}>
- 
+
         {/* ── Input ── */}
         <div className="search-modal-input-wrap">
           <Search size={18} color="var(--text-muted)" />
@@ -112,11 +112,11 @@ function SearchModal({ api, branchReady, onClose }) {
             </button>
           )}
         </div>
- 
+
         {/* ── Results ── */}
         {(hasResults || isEmpty) && (
           <div className="search-results">
- 
+
             {/* Pages */}
             {pageResults.length > 0 && (
               <div className="search-result-group">
@@ -153,7 +153,7 @@ function SearchModal({ api, branchReady, onClose }) {
                 })}
               </div>
             )}
- 
+
             {/* Members */}
             {memberResults.length > 0 && (
               <div className="search-result-group">
@@ -188,7 +188,7 @@ function SearchModal({ api, branchReady, onClose }) {
                 ))}
               </div>
             )}
- 
+
             {/* Empty */}
             {isEmpty && (
               <div className="search-no-results">
@@ -199,10 +199,10 @@ function SearchModal({ api, branchReady, onClose }) {
                 </p>
               </div>
             )}
- 
+
           </div>
         )}
- 
+
         {/* ── Hint (before search) ── */}
         {!hasResults && !isEmpty && (
           <div className="search-hint">
@@ -210,7 +210,7 @@ function SearchModal({ api, branchReady, onClose }) {
             <kbd>ESC</kbd>
           </div>
         )}
- 
+
         {/* ── Quick links (before search) ── */}
         {!query && (
           <div style={{
@@ -247,12 +247,12 @@ function SearchModal({ api, branchReady, onClose }) {
             ))}
           </div>
         )}
- 
+
       </div>
     </div>
   )
 }
- 
+
 
 // ─── BRANCH SWITCHER ──────────────────────────
 function BranchSwitcher() {
@@ -348,33 +348,9 @@ function BranchSwitcher() {
 }
 
 // ─── NOTIFICATIONS DROPDOWN ───────────────────
-function NotificationsDropdown({ api, branchReady, onClose }) {
-  const [notifications, setNotifications] = useState([])
-  const [loading, setLoading]             = useState(true)
-
-  useEffect(() => {
-    if (!branchReady) return
-    const load = async () => {
-      try {
-        const data = await api('/dashboard/activity')
-        if (data.success) {
-          const items = []
-          if (data.todayBirthdays?.length > 0) {
-            data.todayBirthdays.forEach(b => {
-              items.push({ type: 'birthday', text: `🎂 ${b.name}'s birthday today!`, time: new Date() })
-            })
-          }
-          data.activities?.slice(0, 5).forEach(a => {
-            items.push({ type: a.type, text: a.text, time: a.time })
-          })
-          setNotifications(items)
-        }
-      } catch {}
-      finally { setLoading(false) }
-    }
-    load()
-  }, [api, branchReady])
-
+// Now a dumb/presentational component — data comes from Navbar via props
+// so the bell badge and the dropdown list always agree on the same count.
+function NotificationsDropdown({ notifications, loading, onClose }) {
   const timeAgo = (date) => {
     const diff = Math.floor((new Date() - new Date(date)) / 1000)
     if (diff < 60)    return 'Just now'
@@ -474,6 +450,48 @@ export default function Navbar({ onMenuClick }) {
   const notifRef   = useRef(null)
   const profileRef = useRef(null)
 
+  // ── Notifications state lives here now ──
+  const [notifications, setNotifications] = useState([])
+  const [notifLoading, setNotifLoading]     = useState(true)
+
+  const fetchNotifications = useCallback(async () => {
+    if (!branchReady) return
+    setNotifLoading(true)
+    try {
+      const data = await api('/dashboard/activity')
+      if (data.success) {
+        const items = []
+        if (data.todayBirthdays?.length > 0) {
+          data.todayBirthdays.forEach(b => {
+            items.push({ type: 'birthday', text: `🎂 ${b.name}'s birthday today!`, time: new Date() })
+          })
+        }
+        data.activities?.slice(0, 5).forEach(a => {
+          items.push({ type: a.type, text: a.text, time: a.time })
+        })
+        setNotifications(items)
+      }
+    } catch {}
+    finally { setNotifLoading(false) }
+  }, [api, branchReady])
+
+  // Fetch once branch is ready, then refresh periodically (every 2 min)
+  useEffect(() => {
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [fetchNotifications])
+
+  // Refresh the moment the bell is opened, so it's never stale
+  const handleToggleNotifs = () => {
+    setShowNotifs(o => {
+      const next = !o
+      if (next) fetchNotifications()
+      return next
+    })
+    setShowProfile(false)
+  }
+
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
@@ -495,6 +513,9 @@ export default function Navbar({ onMenuClick }) {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  const notifCount      = notifications.length
+  const notifBadgeLabel = notifCount > 9 ? '9+' : notifCount
 
   return (
     <>
@@ -538,16 +559,18 @@ export default function Navbar({ onMenuClick }) {
           <div style={{ position: 'relative' }} ref={notifRef}>
             <button
               className={`navbar-icon-btn ${showNotifs ? 'navbar-icon-btn--active' : ''}`}
-              onClick={() => { setShowNotifs(o => !o); setShowProfile(false) }}
-              aria-label="Notifications"
+              onClick={handleToggleNotifs}
+              aria-label={`Notifications${notifCount > 0 ? ` (${notifCount} unread)` : ''}`}
             >
               <Bell size={20} />
-              <span className="navbar-badge">3</span>
+              {notifCount > 0 && (
+                <span className="navbar-badge">{notifBadgeLabel}</span>
+              )}
             </button>
             {showNotifs && (
               <NotificationsDropdown
-                api={api}
-                branchReady={branchReady}
+                notifications={notifications}
+                loading={notifLoading}
                 onClose={() => setShowNotifs(false)}
               />
             )}
