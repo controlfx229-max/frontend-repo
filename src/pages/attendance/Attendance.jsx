@@ -110,6 +110,190 @@ function CreateServiceForm({ api, onSuccess, onClose }) {
   )
 }
 
+// ─── QUICK CHECK-IN ──────────────────────────
+// Lets staff type a phone number or name and instantly mark one person present.
+// The result card shows full member info ABOVE the button — never hidden.
+function QuickCheckIn({ members, attendance, onMark, serviceId }) {
+  const [query, setQuery]       = useState('')
+  const [result, setResult]     = useState(null)   // matched member
+  const [noMatch, setNoMatch]   = useState(false)
+  const [justMarked, setJustMarked] = useState(false)
+
+  const handleSearch = (val) => {
+    setQuery(val)
+    setJustMarked(false)
+    if (!val.trim()) { setResult(null); setNoMatch(false); return }
+
+    const q = val.toLowerCase().trim()
+    const found = members.find(m =>
+      m.phone?.toLowerCase().includes(q) ||
+      m.whatsapp?.toLowerCase().includes(q) ||
+      `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
+      m.memberId?.toLowerCase().includes(q)
+    )
+    if (found) { setResult(found); setNoMatch(false) }
+    else        { setResult(null); setNoMatch(val.length >= 3) }
+  }
+
+  const handleMark = () => {
+    if (!result) return
+    onMark(String(result._id), 'present')
+    setJustMarked(true)
+    // Clear after short delay so staff can see confirmation
+    setTimeout(() => {
+      setQuery('')
+      setResult(null)
+      setJustMarked(false)
+    }, 1400)
+  }
+
+  const isAlreadyPresent = result && attendance[String(result._id)] === 'present'
+  const initials = result
+    ? `${result.firstName[0]}${result.lastName[0]}`.toUpperCase()
+    : ''
+
+  return (
+    <div style={{
+      border: '2px solid var(--primary)',
+      borderRadius: 12,
+      padding: '12px 14px',
+      marginBottom: '1rem',
+      background: 'var(--surface)'
+    }}>
+      {/* Label */}
+      <p style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+        color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase'
+      }}>
+        ☎ Quick Check-In
+      </p>
+
+      {/* Search input */}
+      <div style={{ position: 'relative' }}>
+        <input
+          value={query}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Type name, phone, or member ID..."
+          style={{
+            width: '100%', padding: '10px 36px 10px 12px',
+            border: '1.5px solid var(--border)', borderRadius: 8,
+            fontSize: 15, outline: 'none', background: 'var(--surface)',
+            color: 'var(--text-primary)', boxSizing: 'border-box'
+          }}
+        />
+        {query && (
+          <button
+            onClick={() => { setQuery(''); setResult(null); setNoMatch(false); setJustMarked(false) }}
+            style={{
+              position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: 0
+            }}
+          >×</button>
+        )}
+      </div>
+
+      {/* ── Result card ── */}
+      {result && (
+        <div style={{
+          marginTop: 10,
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          overflow: 'hidden',
+          background: 'var(--surface-2)'
+        }}>
+          {/* Member info row — always fully visible */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px'
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: isAlreadyPresent ? 'var(--success-bg)' : '#EEF2FF',
+              color: isAlreadyPresent ? 'var(--success)' : 'var(--primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 700, fontSize: 16, flexShrink: 0
+            }}>
+              {initials}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{
+                fontWeight: 700, fontSize: 15,
+                color: 'var(--text-primary)', margin: 0,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+              }}>
+                {result.firstName} {result.lastName}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                {result.memberId}
+                {result.phone ? ` · ${result.phone}` : ''}
+                {result.cellGroupId?.name ? ` · ${result.cellGroupId.name}` : ''}
+              </p>
+            </div>
+            {/* Status badge — top right of card */}
+            {isAlreadyPresent && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
+                background: 'var(--success-bg)', color: 'var(--success)',
+                flexShrink: 0
+              }}>
+                ✓ Present
+              </span>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)' }} />
+
+          {/* Action button — clearly below the member info */}
+          <div style={{ padding: '10px 14px' }}>
+            {justMarked ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, padding: '10px 0',
+                color: 'var(--success)', fontWeight: 700, fontSize: 14
+              }}>
+                <CheckCircle size={18} /> Marked Present!
+              </div>
+            ) : isAlreadyPresent ? (
+              <p style={{
+                textAlign: 'center', fontSize: 13,
+                color: 'var(--text-muted)', padding: '6px 0'
+              }}>
+                Already marked present. Tap their row below to toggle.
+              </p>
+            ) : (
+              <button
+                onClick={handleMark}
+                style={{
+                  width: '100%', padding: '11px 0',
+                  background: 'var(--primary)', color: '#fff',
+                  border: 'none', borderRadius: 8,
+                  fontWeight: 700, fontSize: 15, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: 8
+                }}
+              >
+                <CheckCircle size={17} /> Mark Present
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* No match */}
+      {noMatch && !result && (
+        <p style={{
+          marginTop: 10, fontSize: 13,
+          color: 'var(--text-muted)', textAlign: 'center'
+        }}>
+          No member found for "{query}"
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── TAKE ATTENDANCE MODAL ───────────────────
 /*
  * ATTENDANCE LOGIC — CRITICAL RULES:
@@ -298,6 +482,19 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
+
+
+      {/* ── Quick Check-In: search by phone/name and mark one person instantly ── */}
+      {!loading && members.length > 0 && (
+        <QuickCheckIn
+          members={members}
+          attendance={attendance}
+          onMark={(memberId, status) =>
+            setAttendance(prev => ({ ...prev, [memberId]: status }))
+          }
+          serviceId={service._id}
+        />
+      )}
 
       {/* ── Member list ── */}
       {loading ? (

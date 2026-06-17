@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import useApi from '../../hooks/useApi'
 import {
   Plus, Edit2, Trash2, Users, UserCheck, UserPlus,
-  ChevronDown, ChevronRight, CheckCircle
+  ChevronDown, ChevronRight, CheckCircle, Layers
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
@@ -106,7 +106,7 @@ function CellGroupForm({ api, editing, defaultDept, departments, onSuccess, onCl
           <label className="form-label">Department</label>
           <select className="form-input" value={form.departmentId}
             onChange={e => setForm(p => ({ ...p, departmentId: e.target.value }))}>
-            <option value="">No department</option>
+            <option value="">No department (General)</option>
             {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
           </select>
         </div>
@@ -173,7 +173,8 @@ function SetLeaderModal({ group, members, api, onSuccess, onClose }) {
     <div className="member-form">
       <div className="form-section">
         <input value={search} onChange={e => setSearch(e.target.value)}
-          className="form-input" placeholder="Search member..." style={{ marginBottom: 'var(--space-3)' }} />
+          className="form-input" placeholder="Search member..."
+          style={{ marginBottom: 'var(--space-3)' }} />
         <div className="leader-select-list">
           <div className="leader-select-row" onClick={() => setLeaderId('')} style={{ cursor: 'pointer' }}>
             <div className="member-avatar" style={{ width: 32, height: 32, fontSize: 12, background: 'var(--surface-2)' }}>—</div>
@@ -208,16 +209,17 @@ function SetLeaderModal({ group, members, api, onSuccess, onClose }) {
 
 // ─── ASSIGN MEMBER TO CELL GROUP MODAL ───────
 function AssignMemberModal({ group, api, onSuccess, onClose }) {
-  const [members, setMembers]   = useState([])
-  const [search, setSearch]     = useState('')
-  const [loading, setLoading]   = useState(true)
+  const [members, setMembers]     = useState([])
+  const [search, setSearch]       = useState('')
+  const [loading, setLoading]     = useState(true)
   const [assigning, setAssigning] = useState(null)
-  const [assigned, setAssigned] = useState([])
+  const [assigned, setAssigned]   = useState([])
 
   useEffect(() => {
-    api('/members?limit=300').then(d => {
-      if (d.success) setMembers(d.members)
-    }).catch(console.error).finally(() => setLoading(false))
+    api('/members?limit=300')
+      .then(d => { if (d.success) setMembers(d.members) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [api])
 
   const handleAssign = async (memberId) => {
@@ -239,7 +241,7 @@ function AssignMemberModal({ group, api, onSuccess, onClose }) {
   return (
     <div className="member-form">
       <div className="form-section">
-        <p className="form-section-title">Assign members to {group.name}</p>
+        <p className="form-section-title">Assign members to <strong>{group.name}</strong></p>
         <input value={search} onChange={e => setSearch(e.target.value)}
           className="form-input" placeholder="Search by name or phone..." />
         {loading ? <LoadingSpinner /> : (
@@ -249,7 +251,7 @@ function AssignMemberModal({ group, api, onSuccess, onClose }) {
               : filtered.map(m => {
                 const isInGroup =
                   assigned.includes(m._id) ||
-                  (m.cellGroupId?._id || m.cellGroupId) === group._id
+                  String(m.cellGroupId?._id || m.cellGroupId || '') === String(group._id)
                 return (
                   <div key={m._id} className="leader-select-row">
                     <div className="member-avatar" style={{ width: 32, height: 32, fontSize: 12 }}>
@@ -286,17 +288,17 @@ function AssignMemberModal({ group, api, onSuccess, onClose }) {
 
 // ─── ASSIGN MEMBER TO DEPARTMENT MODAL ───────
 function AssignToDepartmentModal({ dept, api, onSuccess, onClose }) {
-  const [members, setMembers]   = useState([])
-  const [search, setSearch]     = useState('')
-  const [loading, setLoading]   = useState(true)
+  const [members, setMembers]     = useState([])
+  const [search, setSearch]       = useState('')
+  const [loading, setLoading]     = useState(true)
   const [assigning, setAssigning] = useState(null)
-  // Track locally-assigned IDs so UI updates immediately without reload
   const [locallyAssigned, setLocallyAssigned] = useState([])
 
   useEffect(() => {
-    api('/members?limit=300').then(d => {
-      if (d.success) setMembers(d.members)
-    }).catch(console.error).finally(() => setLoading(false))
+    api('/members?limit=300')
+      .then(d => { if (d.success) setMembers(d.members) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [api])
 
   const handleAssign = async (memberId) => {
@@ -308,7 +310,6 @@ function AssignToDepartmentModal({ dept, api, onSuccess, onClose }) {
       })
       if (data.success) {
         setLocallyAssigned(prev => [...prev, memberId])
-        // Update the local members array too so current dept shows correctly
         setMembers(prev => prev.map(m =>
           m._id === memberId
             ? { ...m, departmentId: { _id: dept._id, name: dept.name, color: dept.color } }
@@ -343,7 +344,7 @@ function AssignToDepartmentModal({ dept, api, onSuccess, onClose }) {
   return (
     <div className="member-form">
       <div className="form-section">
-        <p className="form-section-title">Manage members in {dept.name}</p>
+        <p className="form-section-title">Manage members in <strong>{dept.name}</strong></p>
         <input value={search} onChange={e => setSearch(e.target.value)}
           className="form-input" placeholder="Search by name or phone..." />
         {loading ? <LoadingSpinner /> : (
@@ -372,12 +373,14 @@ function AssignToDepartmentModal({ dept, api, onSuccess, onClose }) {
                       </p>
                     </div>
                     {isInThisDept ? (
-                      <button className="btn-outline" style={{ padding: '4px 12px', fontSize: 'var(--text-xs)', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                      <button className="btn-outline"
+                        style={{ padding: '4px 12px', fontSize: 'var(--text-xs)', color: 'var(--danger)', borderColor: 'var(--danger)' }}
                         onClick={() => handleRemove(m._id)} disabled={assigning === m._id}>
                         {assigning === m._id ? '...' : 'Remove'}
                       </button>
                     ) : (
-                      <button className="btn-primary" style={{ padding: '4px 12px', fontSize: 'var(--text-xs)' }}
+                      <button className="btn-primary"
+                        style={{ padding: '4px 12px', fontSize: 'var(--text-xs)' }}
                         onClick={() => handleAssign(m._id)} disabled={assigning === m._id}>
                         {assigning === m._id ? '...' : 'Assign'}
                       </button>
@@ -397,7 +400,7 @@ function AssignToDepartmentModal({ dept, api, onSuccess, onClose }) {
 }
 
 // ─── CELL GROUP CARD ──────────────────────────
-function CellGroupCard({ group, api, onEdit, onDelete, onSetLeader, onAssignMember, onRefresh }) {
+function CellGroupCard({ group, api, onEdit, onDelete, onSetLeader, onAssignMember }) {
   const leaderName = group.leaderId
     ? `${group.leaderId.firstName} ${group.leaderId.lastName}`
     : null
@@ -406,13 +409,11 @@ function CellGroupCard({ group, api, onEdit, onDelete, onSetLeader, onAssignMemb
     <div className="cell-group-card">
       <div className="cell-group-info">
         <p className="cell-group-name">{group.name}</p>
-        {leaderName && (
-          <p className="cell-group-meta">Leader: {leaderName}</p>
-        )}
+        {leaderName && <p className="cell-group-meta">Leader: {leaderName}</p>}
         {group.meetingDay && (
           <p className="cell-group-meta">
             {group.meetingDay.charAt(0).toUpperCase() + group.meetingDay.slice(1)}
-            {group.meetingTime ? ` · ${group.meetingTime}` : ''}
+            {group.meetingTime     ? ` · ${group.meetingTime}`     : ''}
             {group.meetingLocation ? ` · ${group.meetingLocation}` : ''}
           </p>
         )}
@@ -427,7 +428,8 @@ function CellGroupCard({ group, api, onEdit, onDelete, onSetLeader, onAssignMemb
         <button className="dept-edit-btn" onClick={() => onEdit(group)} title="Edit">
           <Edit2 size={13} />
         </button>
-        <button className="dept-edit-btn" style={{ color: 'var(--danger)' }} onClick={() => onDelete(group)} title="Delete">
+        <button className="dept-edit-btn" style={{ color: 'var(--danger)' }}
+          onClick={() => onDelete(group)} title="Delete">
           <Trash2 size={13} />
         </button>
       </div>
@@ -444,9 +446,12 @@ function DepartmentCard({
   onRefresh
 }) {
   const [expanded, setExpanded] = useState(true)
-  const deptGroups = cellGroups.filter(g =>
-    String(g.departmentId?._id || g.departmentId) === String(dept._id)
-  )
+
+  // Only groups that BELONG to this department
+  const deptGroups = cellGroups.filter(g => {
+    const gDeptId = g.departmentId?._id || g.departmentId
+    return gDeptId && String(gDeptId) === String(dept._id)
+  })
 
   return (
     <div className="dept-card">
@@ -461,21 +466,25 @@ function DepartmentCard({
         <div className="dept-card-right">
           <span className="dept-member-count"><UserCheck size={13} />{dept.memberCount || 0} members</span>
           <span className="dept-group-count"><Users size={13} />{deptGroups.length} groups</span>
-          <button className="dept-edit-btn" onClick={e => { e.stopPropagation(); onEditDept(dept) }} title="Edit">
+          <button className="dept-edit-btn"
+            onClick={e => { e.stopPropagation(); onEditDept(dept) }} title="Edit">
             <Edit2 size={14} />
           </button>
           <button className="dept-edit-btn" style={{ color: 'var(--danger)' }}
             onClick={e => { e.stopPropagation(); onDeleteDept(dept) }} title="Delete">
             <Trash2 size={14} />
           </button>
-          {expanded ? <ChevronDown size={16} color="var(--text-muted)" /> : <ChevronRight size={16} color="var(--text-muted)" />}
+          {expanded
+            ? <ChevronDown size={16} color="var(--text-muted)" />
+            : <ChevronRight size={16} color="var(--text-muted)" />}
         </div>
       </div>
 
       {expanded && (
         <div className="dept-groups-section">
           <div style={{ marginBottom: 'var(--space-3)' }}>
-            <button className="btn-secondary" onClick={() => onAssignMemberToDept(dept)} style={{ width: '100%' }}>
+            <button className="btn-secondary"
+              onClick={() => onAssignMemberToDept(dept)} style={{ width: '100%' }}>
               <UserPlus size={14} /> Manage Members in Department
             </button>
           </div>
@@ -490,7 +499,7 @@ function DepartmentCard({
               {deptGroups.map(group => (
                 <CellGroupCard key={group._id} group={group} api={api}
                   onEdit={onEditGroup} onDelete={onDeleteGroup}
-                  onSetLeader={g => onSetLeader(g)} onAssignMember={onAssignMember}
+                  onSetLeader={onSetLeader} onAssignMember={onAssignMember}
                   onRefresh={onRefresh}
                 />
               ))}
@@ -499,6 +508,66 @@ function DepartmentCard({
               </button>
             </>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── GENERAL / UNASSIGNED CELL GROUPS CARD ───
+// FIX: Groups with no departmentId were silently dropped before.
+// This section makes them visible and fully manageable.
+function GeneralGroupsCard({
+  cellGroups, api,
+  onEditGroup, onDeleteGroup, onAddGroup,
+  onSetLeader, onAssignMember, onRefresh
+}) {
+  const [expanded, setExpanded] = useState(true)
+
+  // Groups with null / undefined / empty departmentId
+  const generalGroups = cellGroups.filter(g => {
+    const gDeptId = g.departmentId?._id || g.departmentId
+    return !gDeptId
+  })
+
+  if (generalGroups.length === 0) return null
+
+  return (
+    <div className="dept-card" style={{ borderLeft: '4px solid #94A3B8' }}>
+      <div className="dept-card-header" onClick={() => setExpanded(!expanded)}>
+        <div className="dept-card-left">
+          <div className="dept-color-bar" style={{ background: '#94A3B8' }} />
+          <div>
+            <p className="dept-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Layers size={15} color="#64748B" />
+              General Cell Groups
+            </p>
+            <p className="dept-description">
+              Cell groups not assigned to any department
+            </p>
+          </div>
+        </div>
+        <div className="dept-card-right">
+          <span className="dept-group-count"><Users size={13} />{generalGroups.length} groups</span>
+          {expanded
+            ? <ChevronDown size={16} color="var(--text-muted)" />
+            : <ChevronRight size={16} color="var(--text-muted)" />}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="dept-groups-section">
+          {generalGroups.map(group => (
+            <CellGroupCard key={group._id} group={group} api={api}
+              onEdit={onEditGroup} onDelete={onDeleteGroup}
+              onSetLeader={onSetLeader} onAssignMember={onAssignMember}
+              onRefresh={onRefresh}
+            />
+          ))}
+          {/* Allow adding more general groups from here */}
+          <button className="dept-add-group-btn" onClick={() => onAddGroup(null)}>
+            <Plus size={14} /> Add General Cell Group
+          </button>
         </div>
       )}
     </div>
@@ -561,7 +630,6 @@ export default function Departments() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Delete department
   const handleDeleteDept = async () => {
     setDeleting(true)
     try {
@@ -573,7 +641,6 @@ export default function Departments() {
     finally { setDeleting(false) }
   }
 
-  // Delete cell group
   const handleDeleteGroup = async () => {
     setDeleting(true)
     try {
@@ -585,10 +652,18 @@ export default function Departments() {
     finally { setDeleting(false) }
   }
 
+  // Shared handlers passed down to both DepartmentCard and GeneralGroupsCard
+  const handleEditGroup    = (g) => { setEditingGroup(g); setGroupModal(true) }
+  const handleDeleteGroup_ = (g) => setConfirmDeleteGroup(g)
+  const handleAddGroup     = (dept) => { setDefaultDept(dept); setEditingGroup(null); setGroupModal(true) }
+  const handleSetLeader    = (g) => { setLeaderTarget(g); setLeaderModal(true) }
+  const handleAssignMember = (g) => { setAssignTarget(g); setAssignModal(true) }
+
   if (loading) return <LoadingSpinner message="Loading departments..." />
 
   return (
     <div className="departments-page">
+
       {successMsg && (
         <div className="success-toast"><CheckCircle size={16} /> {successMsg}</div>
       )}
@@ -596,21 +671,32 @@ export default function Departments() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Departments & Cell Groups</h1>
-          <p className="page-subtitle">{departments.length} departments · {cellGroups.length} cell groups</p>
+          <h1 className="page-title">Departments &amp; Cell Groups</h1>
+          <p className="page-subtitle">
+            {departments.length} department{departments.length !== 1 ? 's' : ''} · {cellGroups.length} cell group{cellGroups.length !== 1 ? 's' : ''}
+          </p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditingDept(null); setDeptModal(true) }}>
-          <Plus size={16} /> New Department
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <button className="btn-outline"
+            onClick={() => { setDefaultDept(null); setEditingGroup(null); setGroupModal(true) }}>
+            <Plus size={16} /> New Cell Group
+          </button>
+          <button className="btn-primary"
+            onClick={() => { setEditingDept(null); setDeptModal(true) }}>
+            <Plus size={16} /> New Department
+          </button>
+        </div>
       </div>
 
-      {/* Department list */}
-      {departments.length === 0 ? (
-        <EmptyState icon={Users} title="No departments yet"
-          message="Create your first department to organise your members."
+      {/* Department cards */}
+      {departments.length === 0 && cellGroups.length === 0 ? (
+        <EmptyState icon={Users} title="No departments or cell groups yet"
+          message="Create your first department or cell group to organise your members."
           action={{ label: '+ New Department', onClick: () => { setEditingDept(null); setDeptModal(true) } }} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+
+          {/* Department cards (each shows its own assigned cell groups) */}
           {departments.map(dept => (
             <DepartmentCard
               key={dept._id}
@@ -619,21 +705,38 @@ export default function Departments() {
               api={api}
               onEditDept={d => { setEditingDept(d); setDeptModal(true) }}
               onDeleteDept={d => setConfirmDeleteDept(d)}
-              onEditGroup={g => { setEditingGroup(g); setGroupModal(true) }}
-              onDeleteGroup={g => setConfirmDeleteGroup(g)}
-              onAddGroup={d => { setDefaultDept(d); setEditingGroup(null); setGroupModal(true) }}
-              onSetLeader={g => { setLeaderTarget(g); setLeaderModal(true) }}
-              onAssignMember={g => { setAssignTarget(g); setAssignModal(true) }}
+              onEditGroup={handleEditGroup}
+              onDeleteGroup={handleDeleteGroup_}
+              onAddGroup={handleAddGroup}
+              onSetLeader={handleSetLeader}
+              onAssignMember={handleAssignMember}
               onAssignMemberToDept={d => { setAssignDeptTarget(d); setAssignDeptModal(true) }}
               onRefresh={fetchData}
             />
           ))}
+
+          {/* 
+            FIX: General / unassigned cell groups section.
+            Previously, groups with departmentId = null were invisible because
+            DepartmentCard only renders groups matching its own _id.
+            This card catches all "orphan" groups and shows them with full actions.
+          */}
+          <GeneralGroupsCard
+            cellGroups={cellGroups}
+            api={api}
+            onEditGroup={handleEditGroup}
+            onDeleteGroup={handleDeleteGroup_}
+            onAddGroup={handleAddGroup}
+            onSetLeader={handleSetLeader}
+            onAssignMember={handleAssignMember}
+            onRefresh={fetchData}
+          />
+
         </div>
       )}
 
       {/* ── MODALS ── */}
 
-      {/* Department form */}
       <Modal open={deptModal} onClose={() => { setDeptModal(false); setEditingDept(null) }}
         title={editingDept ? 'Edit Department' : 'New Department'} size="md">
         <DepartmentForm api={api} editing={editingDept}
@@ -641,15 +744,14 @@ export default function Departments() {
           onClose={() => { setDeptModal(false); setEditingDept(null) }} />
       </Modal>
 
-      {/* Cell group form */}
       <Modal open={groupModal} onClose={() => { setGroupModal(false); setEditingGroup(null) }}
         title={editingGroup ? 'Edit Cell Group' : 'New Cell Group'} size="md">
-        <CellGroupForm api={api} editing={editingGroup} defaultDept={defaultDept} departments={departments}
+        <CellGroupForm api={api} editing={editingGroup} defaultDept={defaultDept}
+          departments={departments}
           onSuccess={() => { setGroupModal(false); setEditingGroup(null); fetchData(); showSuccess('Cell group saved.') }}
           onClose={() => { setGroupModal(false); setEditingGroup(null) }} />
       </Modal>
 
-      {/* Set leader */}
       <Modal open={leaderModal} onClose={() => { setLeaderModal(false); setLeaderTarget(null) }}
         title={`Set Leader — ${leaderTarget?.name || ''}`} size="md">
         {leaderTarget && (
@@ -659,39 +761,36 @@ export default function Departments() {
         )}
       </Modal>
 
-      {/* Assign member to cell group */}
       <Modal open={assignModal} onClose={() => setAssignModal(false)}
         title={`Assign Members — ${assignTarget?.name || ''}`} size="md">
         {assignTarget && (
           <AssignMemberModal group={assignTarget} api={api}
-            onSuccess={() => { fetchData() }}
+            onSuccess={fetchData}
             onClose={() => setAssignModal(false)} />
         )}
       </Modal>
 
-      {/* Assign member to department */}
       <Modal open={assignDeptModal} onClose={() => { setAssignDeptModal(false); fetchData() }}
         title={`Members — ${assignDeptTarget?.name || ''}`} size="md">
         {assignDeptTarget && (
           <AssignToDepartmentModal dept={assignDeptTarget} api={api}
-            onSuccess={() => fetchData()}
+            onSuccess={fetchData}
             onClose={() => { setAssignDeptModal(false); fetchData() }} />
         )}
       </Modal>
 
-      {/* Confirm delete department */}
       <ConfirmModal open={!!confirmDeleteDept} onClose={() => setConfirmDeleteDept(null)}
         onConfirm={handleDeleteDept} loading={deleting}
         title="Delete Department?"
         message={confirmDeleteDept ? `Delete "${confirmDeleteDept.name}"? This will not delete the members in it.` : ''}
         confirmLabel="Delete" />
 
-      {/* Confirm delete cell group */}
       <ConfirmModal open={!!confirmDeleteGroup} onClose={() => setConfirmDeleteGroup(null)}
         onConfirm={handleDeleteGroup} loading={deleting}
         title="Delete Cell Group?"
         message={confirmDeleteGroup ? `Delete "${confirmDeleteGroup.name}"? Members will be unassigned from this group.` : ''}
         confirmLabel="Delete" />
+
     </div>
   )
 }
