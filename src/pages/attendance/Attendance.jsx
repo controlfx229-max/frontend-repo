@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import useApi from '../../hooks/useApi'
 import {
   Plus, Calendar, Users, CheckCircle,
@@ -113,7 +114,7 @@ function CreateServiceForm({ api, onSuccess, onClose }) {
 // ─── QUICK CHECK-IN ──────────────────────────
 // Lets staff type a phone number or name and instantly mark one person present.
 // The result card shows full member info ABOVE the button — never hidden.
-function QuickCheckIn({ members, attendance, onMark, serviceId }) {
+function QuickCheckIn({ members, attendance, onMark, serviceId, onAddMember }) {
   const [query, setQuery]       = useState('')
   const [result, setResult]     = useState(null)   // matched member
   const [noMatch, setNoMatch]   = useState(false)
@@ -281,14 +282,36 @@ function QuickCheckIn({ members, attendance, onMark, serviceId }) {
         </div>
       )}
 
-      {/* No match */}
+      {/* No match — with Add Member button */}
       {noMatch && !result && (
-        <p style={{
-          marginTop: 10, fontSize: 13,
-          color: 'var(--text-muted)', textAlign: 'center'
+        <div style={{
+          marginTop: 10,
+          padding: '12px 14px',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          background: 'var(--surface-2)',
+          textAlign: 'center'
         }}>
-          No member found for "{query}"
-        </p>
+          <p style={{
+            fontSize: 13,
+            color: 'var(--text-muted)', marginBottom: 10
+          }}>
+            No member found for "<strong>{query}</strong>"
+          </p>
+          <button
+            onClick={() => onAddMember(query)}
+            style={{
+              width: '100%', padding: '10px 0',
+              background: 'var(--primary)', color: '#fff',
+              border: 'none', borderRadius: 8,
+              fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 8
+            }}
+          >
+            <Plus size={16} /> Add Member
+          </button>
+        </div>
       )}
     </div>
   )
@@ -305,7 +328,7 @@ function QuickCheckIn({ members, attendance, onMark, serviceId }) {
  * 5. Save calls /attendance/mark which does upsert (create or update).
  *    This prevents duplicate records on re-save.
  */
-function TakeAttendanceModal({ service, api, onClose, onSaved }) {
+function TakeAttendanceModal({ service, api, onClose, onSaved, onAddMember }) {
   const [members, setMembers]           = useState([])
   const [attendance, setAttendance]     = useState({})   // { memberId: 'present'|'absent' }
   const [savedRecords, setSavedRecords] = useState({})   // memberId → previously saved status
@@ -493,6 +516,7 @@ function TakeAttendanceModal({ service, api, onClose, onSaved }) {
             setAttendance(prev => ({ ...prev, [memberId]: status }))
           }
           serviceId={service._id}
+          onAddMember={onAddMember}
         />
       )}
 
@@ -660,6 +684,7 @@ function ServiceCard({ service, onTakeAttendance }) {
 // ─── MAIN ATTENDANCE PAGE ────────────────────
 export default function Attendance() {
   const { api, branchReady } = useApi()
+  const navigate = useNavigate()
   const [services, setServices]               = useState([])
   const [loading, setLoading]                 = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -692,6 +717,11 @@ export default function Attendance() {
     setSuccessMsg(message)
     fetchServices()
     setTimeout(() => setSuccessMsg(''), 4000)
+  }
+
+  const handleAddMember = (query) => {
+    setActiveService(null)
+    navigate('/members', { state: { prefill: query } })
   }
 
   const totalServices = services.length
@@ -788,6 +818,7 @@ export default function Attendance() {
             api={api}
             onClose={() => setActiveService(null)}
             onSaved={handleAttendanceSaved}
+            onAddMember={handleAddMember}
           />
         )}
       </Modal>
