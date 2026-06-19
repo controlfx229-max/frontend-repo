@@ -11,13 +11,20 @@ import ConfirmModal from '../../components/ui/ConfirmModal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
 
+// ─── REQUIRED FIELD INDICATOR ─────────────────
+// Small red asterisk shown next to required field labels
+function Req() {
+  return <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>
+}
+
 // ─── MEMBER FORM ──────────────────────────────
 function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGroups = [] }) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [formError, setFormError]     = useState('')      // top-level banner message
+  const [fieldErrors, setFieldErrors] = useState({})     // per-field inline error messages
 
   // Extract IDs safely whether the field is a populated object or a raw string/ObjectId
-  const deptId = editing?.departmentId?._id || editing?.departmentId || ''
+  const deptId  = editing?.departmentId?._id || editing?.departmentId || ''
   const groupId = editing?.cellGroupId?._id  || editing?.cellGroupId  || ''
 
   const [form, setForm] = useState({
@@ -50,22 +57,51 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
       )
     : cellGroups
 
+  // Returns the CSS class for an input — adds 'input-error' if that field failed validation
+  const inputClass = (field) =>
+    `form-input${fieldErrors[field] ? ' input-error' : ''}`
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     const next = { ...form, [name]: type === 'checkbox' ? checked : value }
-    // If department changed, clear cell group so stale group isn't sent
+    // If department changed, clear cell group so a stale group isn't sent
     if (name === 'departmentId') next.cellGroupId = ''
     setForm(next)
-    setError('')
+    // Clear the error for this specific field as soon as the user starts fixing it
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const updated = { ...prev }
+        delete updated[name]
+        return updated
+      })
+    }
+    setFormError('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.firstName.trim() || !form.phone.trim()) {
-      setError('First name and phone number are required.')
+
+    // ── Client-side required field validation ──────────────────────
+    const errors = {}
+    if (!form.firstName.trim())  errors.firstName    = 'First name is required.'
+    if (!form.lastName.trim())   errors.lastName     = 'Last name is required.'
+    if (!form.phone.trim())      errors.phone        = 'Phone number is required.'
+    if (!form.gender)            errors.gender       = 'Please select a gender.'
+    if (!form.dateOfBirth)       errors.dateOfBirth  = 'Date of birth is required.'
+    if (!form.maritalStatus)     errors.maritalStatus = 'Please select a marital status.'
+
+    // If any required fields are missing, show errors and stop submission
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      setFormError(`Please fill in all required fields (${Object.keys(errors).length} missing).`)
       return
     }
+
+    // All good — clear errors and submit
+    setFieldErrors({})
+    setFormError('')
     setLoading(true)
+
     try {
       const payload = {
         ...form,
@@ -78,10 +114,17 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
         editing ? `/members/${editing._id}` : '/members',
         { method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload) }
       )
-      if (!data.success) { setError(data.message); return }
+
+      if (!data.success) {
+        // Surface the exact backend error message so user knows what went wrong
+        setFormError(data.message || 'Failed to save member. Please try again.')
+        return
+      }
+
       onSuccess(data.member)
+
     } catch (err) {
-      setError('Cannot connect to server.')
+      setFormError('Cannot connect to server. Please check your connection and try again.')
       console.error(err)
     } finally {
       setLoading(false)
@@ -90,86 +133,190 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
 
   return (
     <form onSubmit={handleSubmit} className="member-form">
-      {error && <div className="form-error">{error}</div>}
 
+      {/* ── Top-level error banner ── */}
+      {formError && (
+        <div className="form-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      {/* ══ SECTION: Personal Information ══ */}
       <div className="form-section">
         <p className="form-section-title">Personal Information</p>
+
         <div className="form-row">
+          {/* First Name — REQUIRED */}
           <div className="form-group">
-            <label className="form-label">First Name *</label>
-            <input name="firstName" value={form.firstName} onChange={handleChange}
-              className="form-input" placeholder="First name" required />
+            <label className="form-label">First Name<Req /></label>
+            <input
+              name="firstName"
+              value={form.firstName}
+              onChange={handleChange}
+              className={inputClass('firstName')}
+              placeholder="First name"
+            />
+            {fieldErrors.firstName && (
+              <span className="field-error">{fieldErrors.firstName}</span>
+            )}
           </div>
+
+          {/* Last Name — REQUIRED */}
           <div className="form-group">
-            <label className="form-label">Last Name</label>
-            <input name="lastName" value={form.lastName} onChange={handleChange}
-              className="form-input" placeholder="Last name" />
+            <label className="form-label">Last Name<Req /></label>
+            <input
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              className={inputClass('lastName')}
+              placeholder="Last name"
+            />
+            {fieldErrors.lastName && (
+              <span className="field-error">{fieldErrors.lastName}</span>
+            )}
           </div>
         </div>
+
         <div className="form-row">
+          {/* Phone — REQUIRED */}
           <div className="form-group">
-            <label className="form-label">Phone *</label>
-            <input name="phone" value={form.phone} onChange={handleChange}
-              className="form-input" placeholder="Phone number" required />
+            <label className="form-label">Phone<Req /></label>
+            <input
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              className={inputClass('phone')}
+              placeholder="e.g. 0244000000"
+            />
+            {fieldErrors.phone && (
+              <span className="field-error">{fieldErrors.phone}</span>
+            )}
           </div>
+
+          {/* WhatsApp — optional */}
           <div className="form-group">
             <label className="form-label">WhatsApp</label>
-            <input name="whatsapp" value={form.whatsapp} onChange={handleChange}
-              className="form-input" placeholder="WhatsApp number (optional)" />
+            <input
+              name="whatsapp"
+              value={form.whatsapp}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="WhatsApp number (if different)"
+            />
           </div>
         </div>
+
         <div className="form-row">
+          {/* Email — optional */}
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange}
-              className="form-input" placeholder="Email address" />
+            <input
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="Email address"
+            />
           </div>
+
+          {/* Gender — REQUIRED */}
           <div className="form-group">
-            <label className="form-label">Gender</label>
-            <select name="gender" value={form.gender} onChange={handleChange} className="form-input">
+            <label className="form-label">Gender<Req /></label>
+            <select
+              name="gender"
+              value={form.gender}
+              onChange={handleChange}
+              className={inputClass('gender')}
+            >
               <option value="">Select gender</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
+            {fieldErrors.gender && (
+              <span className="field-error">{fieldErrors.gender}</span>
+            )}
           </div>
         </div>
+
         <div className="form-row">
+          {/* Date of Birth — REQUIRED */}
           <div className="form-group">
-            <label className="form-label">Date of Birth</label>
-            <input name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={handleChange}
-              className="form-input" />
+            <label className="form-label">Date of Birth<Req /></label>
+            <input
+              name="dateOfBirth"
+              type="date"
+              value={form.dateOfBirth}
+              onChange={handleChange}
+              className={inputClass('dateOfBirth')}
+            />
+            {fieldErrors.dateOfBirth && (
+              <span className="field-error">{fieldErrors.dateOfBirth}</span>
+            )}
           </div>
+
+          {/* Marital Status — REQUIRED */}
           <div className="form-group">
-            <label className="form-label">Marital Status</label>
-            <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange} className="form-input">
+            <label className="form-label">Marital Status<Req /></label>
+            <select
+              name="maritalStatus"
+              value={form.maritalStatus}
+              onChange={handleChange}
+              className={inputClass('maritalStatus')}
+            >
               <option value="">Select status</option>
               <option value="single">Single</option>
               <option value="married">Married</option>
               <option value="widowed">Widowed</option>
               <option value="divorced">Divorced</option>
             </select>
+            {fieldErrors.maritalStatus && (
+              <span className="field-error">{fieldErrors.maritalStatus}</span>
+            )}
           </div>
         </div>
+
         <div className="form-row">
+          {/* Occupation — optional */}
           <div className="form-group">
             <label className="form-label">Occupation</label>
-            <input name="occupation" value={form.occupation} onChange={handleChange}
-              className="form-input" placeholder="Occupation" />
+            <input
+              name="occupation"
+              value={form.occupation}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="Occupation"
+            />
           </div>
         </div>
+
+        {/* Address — optional */}
         <div className="form-group">
           <label className="form-label">Address</label>
-          <input name="address" value={form.address} onChange={handleChange}
-            className="form-input" placeholder="Home address" />
+          <input
+            name="address"
+            value={form.address}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="Home address"
+          />
         </div>
       </div>
 
+      {/* ══ SECTION: Church Information ══ */}
       <div className="form-section">
         <p className="form-section-title">Church Information</p>
+
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Status</label>
-            <select name="memberStatus" value={form.memberStatus} onChange={handleChange} className="form-input">
+            <select
+              name="memberStatus"
+              value={form.memberStatus}
+              onChange={handleChange}
+              className="form-input"
+            >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="new_convert">New Convert</option>
@@ -177,9 +324,15 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
               <option value="transferred">Transferred</option>
             </select>
           </div>
+
           <div className="form-group">
             <label className="form-label">Department</label>
-            <select name="departmentId" value={form.departmentId} onChange={handleChange} className="form-input">
+            <select
+              name="departmentId"
+              value={form.departmentId}
+              onChange={handleChange}
+              className="form-input"
+            >
               <option value="">No department</option>
               {departments.map(d => (
                 <option key={d._id} value={d._id}>{d.name}</option>
@@ -187,10 +340,16 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
             </select>
           </div>
         </div>
+
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Cell Group</label>
-            <select name="cellGroupId" value={form.cellGroupId} onChange={handleChange} className="form-input">
+            <select
+              name="cellGroupId"
+              value={form.cellGroupId}
+              onChange={handleChange}
+              className="form-input"
+            >
               <option value="">No cell group</option>
               {filteredGroups.map(g => (
                 <option key={g._id} value={g._id}>{g.name}</option>
@@ -198,50 +357,87 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
             </select>
           </div>
         </div>
+
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Baptized?</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <input name="baptized" type="checkbox" checked={form.baptized} onChange={handleChange}
-                style={{ width: 18, height: 18, cursor: 'pointer' }} />
-              <span style={{ fontSize: 'var(--text-sm)' }}>Yes, I am baptized</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 6 }}>
+              <input
+                name="baptized"
+                type="checkbox"
+                checked={form.baptized}
+                onChange={handleChange}
+                style={{ width: 18, height: 18, cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 'var(--text-sm)' }}>Yes </span>
             </div>
           </div>
+
           {form.baptized && (
             <div className="form-group">
               <label className="form-label">Baptism Date</label>
-              <input name="baptismDate" type="date" value={form.baptismDate} onChange={handleChange}
-                className="form-input" />
+              <input
+                name="baptismDate"
+                type="date"
+                value={form.baptismDate}
+                onChange={handleChange}
+                className="form-input"
+              />
             </div>
           )}
         </div>
       </div>
 
+      {/* ══ SECTION: Emergency Contact ══ */}
       <div className="form-section">
         <p className="form-section-title">Emergency Contact</p>
+
         <div className="form-group">
           <label className="form-label">Next of Kin Name</label>
-          <input name="nextOfKinName" value={form.nextOfKinName} onChange={handleChange}
-            className="form-input" placeholder="Name" />
+          <input
+            name="nextOfKinName"
+            value={form.nextOfKinName}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="Full name"
+          />
         </div>
+
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Next of Kin Phone</label>
-            <input name="nextOfKinPhone" value={form.nextOfKinPhone} onChange={handleChange}
-              className="form-input" placeholder="Phone number" />
+            <input
+              name="nextOfKinPhone"
+              value={form.nextOfKinPhone}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="Phone number"
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Relationship</label>
-            <input name="nextOfKinRelation" value={form.nextOfKinRelation} onChange={handleChange}
-              className="form-input" placeholder="e.g. Spouse, Parent" />
+            <input
+              name="nextOfKinRelation"
+              value={form.nextOfKinRelation}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="e.g. Spouse, Parent, Sibling"
+            />
           </div>
         </div>
       </div>
 
+      {/* ── Required fields note ── */}
+      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
+        <span style={{ color: 'var(--danger)' }}>*</span> Required fields
+      </p>
+
       <div className="form-actions">
         <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? (editing ? 'Saving...' : 'Adding...') : (editing ? 'Save Member' : 'Add Member')}
+          {loading
+            ? (editing ? 'Saving...' : 'Adding...')
+            : (editing ? 'Save Member' : 'Add Member')}
         </button>
       </div>
     </form>
@@ -253,20 +449,20 @@ export default function Members() {
   const { api, branchReady } = useApi()
   const navigate = useNavigate()
 
-  const [members, setMembers]         = useState([])
-  const [departments, setDepartments] = useState([])
-  const [cellGroups, setCellGroups]   = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [searchTerm, setSearchTerm]   = useState('')
-  const [filterDept, setFilterDept]   = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-  const [page, setPage]               = useState(1)
-  const [total, setTotal]             = useState(0)
-  const [limit]                       = useState(20)
-  const [showModal, setShowModal]     = useState(false)
-  const [editing, setEditing]         = useState(null)
+  const [members, setMembers]               = useState([])
+  const [departments, setDepartments]       = useState([])
+  const [cellGroups, setCellGroups]         = useState([])
+  const [loading, setLoading]               = useState(true)
+  const [searchTerm, setSearchTerm]         = useState('')
+  const [filterDept, setFilterDept]         = useState('')
+  const [filterStatus, setFilterStatus]     = useState('')
+  const [page, setPage]                     = useState(1)
+  const [total, setTotal]                   = useState(0)
+  const [limit]                             = useState(20)
+  const [showModal, setShowModal]           = useState(false)
+  const [editing, setEditing]               = useState(null)
   const [confirmArchive, setConfirmArchive] = useState(null)
-  const [successMsg, setSuccessMsg]   = useState('')
+  const [successMsg, setSuccessMsg]         = useState('')
 
   // Load departments + cell groups once branch is ready
   useEffect(() => {
@@ -346,16 +542,24 @@ export default function Members() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+
+      {/* Success toast */}
       {successMsg && (
-        <div className="success-toast"><CheckCircle size={16} /> {successMsg}</div>
+        <div className="success-toast">
+          <CheckCircle size={16} /> {successMsg}
+        </div>
       )}
 
+      {/* Page header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Members</h1>
           <p className="page-subtitle">{total} total members</p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditing(null); setShowModal(true) }}>
+        <button
+          className="btn-primary"
+          onClick={() => { setEditing(null); setShowModal(true) }}
+        >
           <Plus size={16} /> Add Member
         </button>
       </div>
@@ -377,7 +581,9 @@ export default function Members() {
           style={{ minWidth: 150 }}
         >
           <option value="">All Departments</option>
-          {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
+          {departments.map(d => (
+            <option key={d._id} value={d._id}>{d.name}</option>
+          ))}
         </select>
         <select
           value={filterStatus}
@@ -393,6 +599,7 @@ export default function Members() {
         </select>
       </div>
 
+      {/* Content */}
       {loading ? (
         <LoadingSpinner message="Loading members..." />
       ) : members.length === 0 ? (
@@ -410,9 +617,14 @@ export default function Members() {
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
                   {['Name', 'Phone', 'Department', 'Cell Group', 'Status', 'Actions'].map(h => (
                     <th key={h} style={{
-                      padding: 'var(--space-3)', textAlign: h === 'Actions' ? 'center' : 'left',
-                      fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)'
-                    }}>{h}</th>
+                      padding: 'var(--space-3)',
+                      textAlign: h === 'Actions' ? 'center' : 'left',
+                      fontWeight: 700,
+                      fontSize: 'var(--text-sm)',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -436,10 +648,12 @@ export default function Members() {
                       <td style={{ padding: 'var(--space-3)' }}>
                         {member.departmentId ? (
                           <span style={{
-                            padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                            padding: '3px 8px',
+                            borderRadius: 'var(--radius-sm)',
                             background: (member.departmentId?.color || '#4F46E5') + '20',
                             color: member.departmentId?.color || '#4F46E5',
-                            fontWeight: 700, fontSize: 'var(--text-xs)'
+                            fontWeight: 700,
+                            fontSize: 'var(--text-xs)'
                           }}>
                             {member.departmentId.name}
                           </span>
@@ -452,9 +666,12 @@ export default function Members() {
                       </td>
                       <td style={{ padding: 'var(--space-3)' }}>
                         <span style={{
-                          padding: '2px 8px', borderRadius: 999,
-                          background: sc.bg, color: sc.color,
-                          fontSize: 'var(--text-xs)', fontWeight: 700
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          background: sc.bg,
+                          color: sc.color,
+                          fontSize: 'var(--text-xs)',
+                          fontWeight: 700
                         }}>
                           {member.memberStatus?.replace('_', ' ')}
                         </span>
@@ -491,13 +708,21 @@ export default function Members() {
 
           {/* Pagination */}
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-outline">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="btn-outline"
+            >
               Previous
             </button>
             <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
               Page {page} of {Math.max(1, Math.ceil(total / limit))}
             </span>
-            <button onClick={() => setPage(p => (p * limit < total ? p + 1 : p))} disabled={page * limit >= total} className="btn-outline">
+            <button
+              onClick={() => setPage(p => (p * limit < total ? p + 1 : p))}
+              disabled={page * limit >= total}
+              className="btn-outline"
+            >
               Next
             </button>
           </div>
@@ -521,6 +746,7 @@ export default function Members() {
         />
       </Modal>
 
+      {/* Archive confirmation */}
       <ConfirmModal
         open={!!confirmArchive}
         onClose={() => setConfirmArchive(null)}
