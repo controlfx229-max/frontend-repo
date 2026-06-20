@@ -148,14 +148,6 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
   return (
   <form onSubmit={handleSubmit} className="member-form">
 
-    {/* Backend error — plain text message e.g. "Phone already exists" */}
-    {formError && (
-      <div className="form-error-banner">
-        <AlertCircle size={15} style={{ flexShrink: 0 }} />
-        <span>{formError}</span>
-      </div>
-    )}
-
     {/* Client-side validation — missing required fields with red asterisks */}
     {Object.keys(fieldErrors).length > 0 && (
       <div className="form-error-banner">
