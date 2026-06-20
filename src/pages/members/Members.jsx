@@ -90,12 +90,26 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
     if (!form.dateOfBirth)       errors.dateOfBirth  = 'Date of birth is required.'
     if (!form.maritalStatus)     errors.maritalStatus = 'Please select a marital status.'
 
-    // If any required fields are missing, show errors and stop submission
     if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors)
-      setFormError(`Please fill in all required fields (${Object.keys(errors).length} missing).`)
-      return
-    }
+  setFieldErrors(errors)
+
+  // Map each missing field key to a readable label with asterisk
+  const fieldLabels = {
+    firstName:    '* First Name',
+    lastName:     '* Last Name',
+    phone:        '* Phone',
+    gender:       '* Gender',
+    dateOfBirth:  '* Date of Birth',
+    maritalStatus:'* Marital Status',
+  }
+
+  const missingList = Object.keys(errors)
+    .map(key => fieldLabels[key])
+    .join(', ')
+
+  setFormError(`Please fill in the following required fields: ${missingList}`)
+  return
+}
 
     // All good — clear errors and submit
     setFieldErrors({})
