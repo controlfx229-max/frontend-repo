@@ -175,15 +175,17 @@ export default function Login() {
             </button>
 
           </form>
+    <div className="login-register-cta">
+  <p className="login-register-divider">Don't have an account?</p>
+  <a href="/register" className="btn-register">
+    Register Your Church
+    <ArrowRight size={16} />
+  </a>
+</div>
 
-          <p className="login-register-link">
-            New to MinistryOS?{' '}
-            <a href="/register">Register your church →</a>
-          </p>
-
-          <p className="login-footer">
-            © 2026 EM Control IT Solutions · MinistryOS
-          </p>
+<p className="login-footer">
+  © 2026 EM Control IT Solutions · MinistryOS
+</p>
 
         </div>
       </div>
