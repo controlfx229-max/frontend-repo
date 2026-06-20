@@ -146,15 +146,41 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
   }
 
   return (
-    <form onSubmit={handleSubmit} className="member-form">
+  <form onSubmit={handleSubmit} className="member-form">
 
-      {/* ── Top-level error banner ── */}
-      {formError && (
-        <div className="form-error-banner">
-          <AlertCircle size={15} style={{ flexShrink: 0 }} />
-          <span>{formError}</span>
-        </div>
-      )}
+    {/* Backend error — plain text message e.g. "Phone already exists" */}
+    {formError && (
+      <div className="form-error-banner">
+        <AlertCircle size={15} style={{ flexShrink: 0 }} />
+        <span>{formError}</span>
+      </div>
+    )}
+
+    {/* Client-side validation — missing required fields with red asterisks */}
+    {Object.keys(fieldErrors).length > 0 && (
+      <div className="form-error-banner">
+        <AlertCircle size={15} style={{ flexShrink: 0 }} />
+        <span>
+          Please fill in the following required fields:{' '}
+          {Object.keys(fieldErrors).map((key, i, arr) => {
+            const labels = {
+              firstName:     'First Name',
+              lastName:      'Last Name',
+              phone:         'Phone',
+              gender:        'Gender',
+              dateOfBirth:   'Date of Birth',
+              maritalStatus: 'Marital Status',
+            }
+            return (
+              <span key={key}>
+                <span style={{ color: 'var(--danger)', fontWeight: 700 }}>*</span>
+                {labels[key]}{i < arr.length - 1 ? ', ' : ''}
+              </span>
+            )
+          })}
+        </span>
+      </div>
+    )}
 
       {/* ══ SECTION: Personal Information ══ */}
       <div className="form-section">
