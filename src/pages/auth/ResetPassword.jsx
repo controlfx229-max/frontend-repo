@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import Logo from '../../components/Logo'
 
 export default function ResetPassword() {
-  const { login } = useAuth()
+  const { login }  = useAuth()
+  const navigate   = useNavigate()
 
-  const [form, setForm]           = useState({ password: '', confirmPassword: '' })
-  const [showPass, setShowPass]   = useState(false)
+  const [form, setForm]               = useState({ password: '', confirmPassword: '' })
+  const [showPass, setShowPass]       = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState('')
-  const [done, setDone]           = useState(false)
-  const [token, setToken]         = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
+  const [done, setDone]               = useState(false)
+  const [token, setToken]             = useState('')
 
   // ── Read token from URL: /reset-password/:token
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function ResetPassword() {
     setError('')
   }
 
-  // ── Basic password strength indicator
+  // ── Password strength indicator
   const getStrength = (pw) => {
     if (!pw) return null
     if (pw.length < 6)  return { label: 'Too short',  color: '#ef4444', width: '20%' }
@@ -76,17 +78,23 @@ export default function ResetPassword() {
         return
       }
 
-      // ── Auto-login after successful reset (backend sends fresh token)
+      // ── Save tokens and full user to localStorage
       localStorage.setItem('token',        data.token)
       localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('user',         JSON.stringify(data.user || {}))
 
+      // ── Update AuthContext with full user object
+      // This is the same flow as Login — context updates before navigation
       login(data.token, data.user)
+
+      // ── Show success state briefly
       setDone(true)
 
-      // ── Redirect after short delay so user sees success message
+      // ── Navigate using React Router (no full page reload)
+      // window.location.href was causing blank screen because it
+      // reloaded before AuthContext finished updating
       setTimeout(() => {
-        window.location.href = data.redirectTo || '/dashboard'
+        navigate(data.redirectTo || '/dashboard')
       }, 2000)
 
     } catch (err) {
@@ -230,7 +238,7 @@ export default function ResetPassword() {
                   {/* ── Match indicator */}
                   {form.confirmPassword && (
                     <p style={{
-                      fontSize: '12px',
+                      fontSize:  '12px',
                       marginTop: '4px',
                       color: form.password === form.confirmPassword
                         ? '#22c55e' : '#ef4444'
