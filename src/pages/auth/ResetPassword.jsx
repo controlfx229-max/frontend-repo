@@ -17,6 +17,7 @@ export default function ResetPassword() {
   const [token, setToken]             = useState('')
 
   // ── Read token from URL: /reset-password/:token
+  // This token comes from OTP verification (verifyOTP endpoint)
   useEffect(() => {
     const parts = window.location.pathname.split('/')
     const t = parts[parts.length - 1]
