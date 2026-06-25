@@ -41,13 +41,12 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const normalized = normalizePhone(phone);
-      
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ phone: normalized })
-      });
+      // Just send raw — backend handles it
+const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, {
+  method:  'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body:    JSON.stringify({ phone: phone.trim() })  // ← raw input
+});
 
       const data = await res.json();
 
