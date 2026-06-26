@@ -122,12 +122,22 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword }) {
           />
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Your Email Address *</label>
-          <input
-            name="adminEmail" type="email" value={form.adminEmail} onChange={onChange}
-            className="form-input" placeholder="you@example.com"
-          />
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Your Email Address *</label>
+            <input
+              name="adminEmail" type="email" value={form.adminEmail} onChange={onChange}
+              className="form-input" placeholder="you@example.com"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Your Phone Number *</label>
+            <input
+              name="adminPhone" type="tel" value={form.adminPhone} onChange={onChange}
+              className="form-input" placeholder="024XXXXXXX"
+              inputMode="tel"
+            />
+          </div>
         </div>
 
         <div className="form-group">
@@ -205,6 +215,7 @@ export default function Register() {
     churchPhone:     '',
     adminName:       '',
     adminEmail:      '',
+    adminPhone:      '',   // ← new
     adminPassword:   '',
     confirmPassword: ''
   })
@@ -224,10 +235,11 @@ export default function Register() {
   }
 
   const validateStep2 = () => {
-    if (!form.adminName.trim())      { setError('Your name is required.');            return false }
-    if (!form.adminEmail.trim())     { setError('Your email is required.');           return false }
+    if (!form.adminName.trim())        { setError('Your name is required.');                   return false }
+    if (!form.adminEmail.trim())       { setError('Your email is required.');                  return false }
+    if (!form.adminPhone.trim())       { setError('Your phone number is required.');           return false }
     if (form.adminPassword.length < 8) { setError('Password must be at least 8 characters.'); return false }
-    if (form.adminPassword !== form.confirmPassword) { setError('Passwords do not match.'); return false }
+    if (form.adminPassword !== form.confirmPassword) { setError('Passwords do not match.');    return false }
     return true
   }
 
@@ -252,17 +264,16 @@ export default function Register() {
           city:          form.city,
           adminName:     form.adminName,
           adminEmail:    form.adminEmail,
+          adminPhone:    form.adminPhone,   // ← new
           adminPassword: form.adminPassword
         })
       })
       const data = await res.json()
       if (!data.success) { setError(data.message); return }
 
-      // Log in automatically
       login(data.token, data.user)
       setStep(2)
 
-      // Redirect to dashboard after 2.5 seconds
       setTimeout(() => { window.location.href = '/dashboard' }, 2500)
     } catch {
       setError('Cannot connect to server. Please try again.')
@@ -305,14 +316,12 @@ export default function Register() {
       <div className="login-form-panel">
         <div className="login-form-inner animate-fadeIn">
 
-          {/* Step Indicator */}
           {step < 2 && (
             <div style={{ marginBottom: 'var(--space-8)' }}>
               <StepIndicator current={step} total={2} />
             </div>
           )}
 
-          {/* Step Content */}
           {step === 0 && (
             <StepChurch form={form} onChange={handleChange} error={error} />
           )}
@@ -326,7 +335,6 @@ export default function Register() {
             <StepSuccess churchName={form.churchName} adminName={form.adminName} />
           )}
 
-          {/* Navigation Buttons */}
           {step < 2 && (
             <div className="reg-nav-buttons">
               {step > 0 && (
