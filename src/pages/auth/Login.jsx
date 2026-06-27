@@ -74,7 +74,7 @@ export default function Login() {
           <div className="login-brand-headline">
             <h1 className="login-brand-title">MinistryOS</h1>
             <p className="login-brand-tagline">
-              The complete operating system for your church.
+              The complete operating system for managing your church.
             </p>
             <p className="login-brand-desc">
               Built for Ghanaian churches, MinistryOS brings together everything
