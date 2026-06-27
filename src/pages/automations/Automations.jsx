@@ -5,7 +5,7 @@ import {
   Clock, CheckCircle, AlertCircle,
   Edit2, X, ChevronDown, ChevronUp,
   Send, Users, Calendar, Gift,
-  Bell, UserPlus
+  Bell, UserPlus, AlertTriangle
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
@@ -53,18 +53,18 @@ const TYPE_CONFIG = {
 const timeAgo = (date) => {
   if (!date) return 'Never'
   const diff = Math.floor((new Date() - new Date(date)) / 1000)
-  if (diff < 60)   return 'Just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 60)    return 'Just now'
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
   return new Date(date).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // ─── EDIT AUTOMATION MODAL ───────────────────
 function EditModal({ automation, api, onSuccess, onClose }) {
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState('')
-  const [messageBody, setBody]  = useState(automation.messageBody || '')
-  const [config, setConfig]     = useState(automation.config || {})
+  const [loading, setLoading]  = useState(false)
+  const [error, setError]      = useState('')
+  const [messageBody, setBody] = useState(automation.messageBody || '')
+  const [config, setConfig]    = useState(automation.config || {})
 
   const handleSave = async () => {
     if (!messageBody.trim()) { setError('Message body is required.'); return }
@@ -88,7 +88,6 @@ function EditModal({ automation, api, onSuccess, onClose }) {
     <div className="member-form">
       {error && <div className="form-error">{error}</div>}
 
-      {/* Type badge */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
         padding: 'var(--space-3) var(--space-4)',
@@ -97,26 +96,18 @@ function EditModal({ automation, api, onSuccess, onClose }) {
       }}>
         <Icon size={16} color={cfg.color} />
         <div>
-          <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: cfg.color }}>
-            {cfg.label}
-          </p>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-            {cfg.freq}
-          </p>
+          <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: cfg.color }}>{cfg.label}</p>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{cfg.freq}</p>
         </div>
       </div>
 
       <div className="form-section">
-
-        {/* Trigger Config — only shown for relevant types */}
         {automation.type === 'inactive_followup' && (
           <div className="form-group">
             <label className="form-label">Trigger After (weeks of absence)</label>
-            <select
-              value={config.inactiveWeeks || 4}
+            <select value={config.inactiveWeeks || 4}
               onChange={e => setConfig(p => ({ ...p, inactiveWeeks: parseInt(e.target.value) }))}
-              className="form-input"
-            >
+              className="form-input">
               {[1,2,3,4,6,8,12].map(w => (
                 <option key={w} value={w}>{w} week{w > 1 ? 's' : ''}</option>
               ))}
@@ -130,11 +121,9 @@ function EditModal({ automation, api, onSuccess, onClose }) {
         {automation.type === 'attendance_alert' && (
           <div className="form-group">
             <label className="form-label">Consecutive Absences to Trigger</label>
-            <select
-              value={config.consecutiveAbsences || 3}
+            <select value={config.consecutiveAbsences || 3}
               onChange={e => setConfig(p => ({ ...p, consecutiveAbsences: parseInt(e.target.value) }))}
-              className="form-input"
-            >
+              className="form-input">
               {[2,3,4,5,6].map(n => (
                 <option key={n} value={n}>{n} services in a row</option>
               ))}
@@ -145,11 +134,9 @@ function EditModal({ automation, api, onSuccess, onClose }) {
         {automation.type === 'event_reminder' && (
           <div className="form-group">
             <label className="form-label">Send Reminder How Many Days Before Event?</label>
-            <select
-              value={config.daysBeforeEvent || 1}
+            <select value={config.daysBeforeEvent || 1}
               onChange={e => setConfig(p => ({ ...p, daysBeforeEvent: parseInt(e.target.value) }))}
-              className="form-input"
-            >
+              className="form-input">
               {[1,2,3,5,7].map(d => (
                 <option key={d} value={d}>{d} day{d > 1 ? 's' : ''} before</option>
               ))}
@@ -157,16 +144,10 @@ function EditModal({ automation, api, onSuccess, onClose }) {
           </div>
         )}
 
-        {/* Message Body */}
         <div className="form-group">
           <label className="form-label">Message Body *</label>
-          <textarea
-            value={messageBody}
-            onChange={e => setBody(e.target.value)}
-            className="form-input"
-            rows={5}
-            style={{ resize: 'vertical', fontFamily: 'inherit' }}
-          />
+          <textarea value={messageBody} onChange={e => setBody(e.target.value)}
+            className="form-input" rows={5} style={{ resize: 'vertical', fontFamily: 'inherit' }} />
           <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
             Variables: <code>{'{{firstName}}'}</code> · <code>{'{{fullName}}'}</code> · <code>{'{{churchName}}'}</code>
             {automation.type === 'event_reminder' && (
@@ -223,30 +204,21 @@ function LogDrawer({ automation, api, open, onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {logs.map((log, i) => (
             <div key={i} style={{
-              display: 'flex', alignItems: 'flex-start',
-              justifyContent: 'space-between',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
               padding: 'var(--space-3) var(--space-4)',
-              background: 'var(--surface-2)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              gap: 'var(--space-4)'
+              background: 'var(--surface-2)', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)', gap: 'var(--space-4)'
             }}>
               <div>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   {log.note || 'Ran successfully'}
                 </p>
-                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {timeAgo(log.firedAt)}
-                </p>
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{timeAgo(log.firedAt)}</p>
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-3)', flexShrink: 0 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)' }}>
-                  ✓ {log.totalSent} sent
-                </span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)' }}>✓ {log.totalSent} sent</span>
                 {log.totalFailed > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)' }}>
-                    ✗ {log.totalFailed} failed
-                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)' }}>✗ {log.totalFailed} failed</span>
                 )}
               </div>
             </div>
@@ -268,34 +240,29 @@ function AutomationCard({ automation, api, onUpdate }) {
 
   const cfg  = TYPE_CONFIG[automation.type] || {}
   const Icon = cfg.icon || Zap
+  const isActive = automation.isActive
 
-  // Toggle on/off
   const handleToggle = async () => {
     setToggling(true)
     try {
       const data = await api(`/automations/${automation._id}/toggle`, {
         method:  'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ isActive: !automation.isActive })
+        body:    JSON.stringify({ isActive: !isActive })
       })
       if (data.success) onUpdate(data.automation)
     } catch {}
     finally { setToggling(false) }
   }
 
-  // Manual trigger
   const handleRun = async () => {
     setTriggering(true)
     setRunResult(null)
     try {
-      const data = await api(`/automations/${automation._id}/run`, {
-        method:  'POST',
-        
-      })
+      const data = await api(`/automations/${automation._id}/run`, { method: 'POST' })
       if (data.success) {
         setRunResult(data.result)
         onUpdate({ ...automation, lastRunAt: new Date(), totalSent: automation.totalSent + data.result.sent })
-        // Clear result after 6 seconds
         setTimeout(() => setRunResult(null), 6000)
       }
     } catch {}
@@ -304,32 +271,72 @@ function AutomationCard({ automation, api, onUpdate }) {
 
   return (
     <>
-      <div className={`auto-card ${automation.isActive ? 'auto-card--active' : ''}`}>
+      <div className={`auto-card ${isActive ? 'auto-card--active' : 'auto-card--inactive'}`}>
+
+        {/* ── INACTIVE BANNER ── shown only when off */}
+        {!isActive && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            background: '#FFFBEB',
+            borderBottom: '1px solid #FDE68A',
+          }}>
+            <AlertTriangle size={13} color="#D97706" strokeWidth={2.5} />
+            <p style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#92400E',
+              margin: 0,
+              flex: 1,
+            }}>
+              This automation is <strong>off</strong> — toggle the switch to activate it and begin sending messages automatically.
+            </p>
+            <button
+              onClick={handleToggle}
+              disabled={toggling}
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                padding: '3px 10px',
+                background: '#D97706',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                opacity: toggling ? 0.7 : 1,
+              }}
+            >
+              {toggling ? '...' : 'Activate'}
+            </button>
+          </div>
+        )}
 
         {/* Card Header */}
-        <div className="auto-card-header">
-
-          {/* Icon + Name */}
+        <div className="auto-card-header" style={{ opacity: isActive ? 1 : 0.65 }}>
           <div className="auto-card-left">
-            <div className="auto-card-icon" style={{ background: cfg.bg }}>
-              <Icon size={20} color={cfg.color} />
+            <div className="auto-card-icon" style={{ background: isActive ? cfg.bg : '#F1F5F9' }}>
+              <Icon size={20} color={isActive ? cfg.color : '#94A3B8'} />
             </div>
             <div>
-              <p className="auto-card-name">{automation.name}</p>
+              <p className="auto-card-name" style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                {automation.name}
+              </p>
               <p className="auto-card-desc">{automation.description}</p>
             </div>
           </div>
 
-          {/* Toggle */}
           <button
             className="auto-toggle-btn"
             onClick={handleToggle}
             disabled={toggling}
-            title={automation.isActive ? 'Turn off' : 'Turn on'}
+            title={isActive ? 'Turn off' : 'Turn on'}
           >
-            {automation.isActive
+            {isActive
               ? <ToggleRight size={32} color="var(--success)" />
-              : <ToggleLeft  size={32} color="var(--text-muted)" />
+              : <ToggleLeft  size={32} color="#CBD5E1" />
             }
           </button>
         </div>
@@ -352,7 +359,7 @@ function AutomationCard({ automation, api, onUpdate }) {
         )}
 
         {/* Stats Row */}
-        <div className="auto-card-stats">
+        <div className="auto-card-stats" style={{ opacity: isActive ? 1 : 0.55 }}>
           <div className="auto-stat">
             <Clock size={12} color="var(--text-muted)" />
             <span>Last run: {timeAgo(automation.lastRunAt)}</span>
@@ -361,16 +368,30 @@ function AutomationCard({ automation, api, onUpdate }) {
             <Send size={12} color="var(--text-muted)" />
             <span>{automation.totalSent} messages sent total</span>
           </div>
-          <div className="auto-stat" style={{ color: cfg.color, fontWeight: 600 }}>
-            {automation.isActive ? '● Active' : '○ Inactive'}
+          {/* Status pill */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '2px 10px',
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 700,
+            background: isActive ? '#DCFCE7' : '#F1F5F9',
+            color:      isActive ? '#166534' : '#64748B',
+            border: `1px solid ${isActive ? '#BBF7D0' : '#E2E8F0'}`,
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: isActive ? '#22C55E' : '#94A3B8',
+              display: 'inline-block',
+            }} />
+            {isActive ? 'Active' : 'Inactive'}
           </div>
         </div>
 
-        {/* Expand — show message preview */}
-        <button
-          className="auto-expand-btn"
-          onClick={() => setExpanded(e => !e)}
-        >
+        {/* Expand — message preview */}
+        <button className="auto-expand-btn" onClick={() => setExpanded(e => !e)}>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {expanded ? 'Hide message' : 'Preview message'}
         </button>
@@ -385,48 +406,49 @@ function AutomationCard({ automation, api, onUpdate }) {
 
         {/* Action Buttons */}
         <div className="auto-card-actions">
-          <button
-            className="btn-outline auto-action-btn"
-            onClick={() => setShowEdit(true)}
-          >
+          <button className="btn-outline auto-action-btn" onClick={() => setShowEdit(true)}>
             <Edit2 size={13} /> Edit
           </button>
-          <button
-            className="btn-outline auto-action-btn"
-            onClick={() => setShowLogs(true)}
-          >
+          <button className="btn-outline auto-action-btn" onClick={() => setShowLogs(true)}>
             <Clock size={13} /> History
           </button>
-          <button
-            className="btn-primary auto-action-btn"
-            onClick={handleRun}
-            disabled={triggering}
-            title="Run this automation now manually"
-          >
-            <Play size={13} />
-            {triggering ? 'Running...' : 'Run Now'}
-          </button>
+          {isActive ? (
+            <button className="btn-primary auto-action-btn" onClick={handleRun} disabled={triggering}>
+              <Play size={13} />
+              {triggering ? 'Running...' : 'Run Now'}
+            </button>
+          ) : (
+            /* Replace Run Now with Activate when inactive */
+            <button
+              className="auto-action-btn"
+              onClick={handleToggle}
+              disabled={toggling}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px',
+                background: 'transparent',
+                border: '1.5px dashed #CBD5E1',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                color: '#64748B',
+                cursor: 'pointer',
+              }}
+            >
+              <ToggleRight size={13} />
+              {toggling ? 'Activating...' : 'Activate to run'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Edit Modal */}
-      <Modal open={showEdit} onClose={() => setShowEdit(false)}
-        title="Edit Automation" size="md">
-        <EditModal
-          automation={automation}
-          api={api}
+      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit Automation" size="md">
+        <EditModal automation={automation} api={api}
           onSuccess={(updated) => { onUpdate(updated); setShowEdit(false) }}
-          onClose={() => setShowEdit(false)}
-        />
+          onClose={() => setShowEdit(false)} />
       </Modal>
 
-      {/* Logs Drawer */}
-      <LogDrawer
-        automation={automation}
-        api={api}
-        open={showLogs}
-        onClose={() => setShowLogs(false)}
-      />
+      <LogDrawer automation={automation} api={api} open={showLogs} onClose={() => setShowLogs(false)} />
     </>
   )
 }
@@ -447,18 +469,15 @@ export default function Automations() {
     finally { setLoading(false) }
   }, [api, branchReady])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAutomations() }, [fetchAutomations])
 
-  // Replace one automation in the list after an update
   const handleUpdate = (updated) => {
-    setAutomations(prev =>
-      prev.map(a => a._id === updated._id ? updated : a)
-    )
+    setAutomations(prev => prev.map(a => a._id === updated._id ? updated : a))
   }
 
-  const activeCount = automations.filter(a => a.isActive).length
-  const totalSent   = automations.reduce((sum, a) => sum + (a.totalSent || 0), 0)
+  const activeCount   = automations.filter(a => a.isActive).length
+  const inactiveCount = automations.filter(a => !a.isActive).length
+  const totalSent     = automations.reduce((sum, a) => sum + (a.totalSent || 0), 0)
 
   return (
     <div className="automations-page">
@@ -484,19 +503,35 @@ export default function Automations() {
         </p>
       </div>
 
+      {/* ── INACTIVE WARNING — shown when any are off ── */}
+      {inactiveCount > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          padding: '12px 16px',
+          background: '#FFFBEB',
+          border: '1px solid #FDE68A',
+          borderRadius: 'var(--radius-lg)',
+          marginBottom: 'var(--space-5)',
+        }}>
+          <AlertTriangle size={16} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 'var(--text-sm)', color: '#78350F', margin: 0, lineHeight: 1.5 }}>
+            <strong>{inactiveCount} automation{inactiveCount > 1 ? 's are' : ' is'} currently off</strong> and will not send any messages until activated.
+            Toggle the switch on each card to enable them.
+          </p>
+        </div>
+      )}
+
       {/* Stats Row */}
       <div className="auto-stats-row">
         {[
-          { label: 'Active Automations', value: activeCount,    color: 'var(--success)' },
-          { label: 'Total Messages Sent', value: totalSent,    color: 'var(--primary)' },
-          { label: 'Total Automations',   value: automations.length, color: 'var(--info)' },
+          { label: 'Active Automations',  value: activeCount,         color: 'var(--success)' },
+          { label: 'Total Messages Sent', value: totalSent,           color: 'var(--primary)' },
+          { label: 'Total Automations',   value: automations.length,  color: 'var(--info)'    },
         ].map(({ label, value, color }) => (
           <div className="auto-stat-card" key={label}>
-            <p style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize:   'var(--text-3xl)',
-              fontWeight: 800, color, lineHeight: 1
-            }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 800, color, lineHeight: 1 }}>
               {value}
             </p>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
@@ -512,12 +547,7 @@ export default function Automations() {
       ) : (
         <div className="auto-cards-grid">
           {automations.map(auto => (
-            <AutomationCard
-              key={auto._id}
-              automation={auto}
-              api={api}
-              onUpdate={handleUpdate}
-            />
+            <AutomationCard key={auto._id} automation={auto} api={api} onUpdate={handleUpdate} />
           ))}
         </div>
       )}
