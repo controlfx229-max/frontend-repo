@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback,useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
   CreditCard, CheckCircle, AlertCircle, Clock,
@@ -48,6 +48,64 @@ const SMS_BUNDLES = [
   { key: '1000', credits: 1000, priceGHS: 75  },
   { key: '5000', credits: 5000, priceGHS: 320 },
 ]
+
+// ── SMS CREDIT BAR ────────────────────────────
+function SMSCreditBar({ credits, plan }) {
+  const planMax = { trial: 200, starter: 200, growth: 500, enterprise: 2000 }
+  const max     = planMax[plan] || 200
+  const pct     = Math.min((credits / max) * 100, 100)
+  const low     = credits <= 20
+  const empty   = credits === 0
+
+  return (
+    <div style={{
+      background:   empty ? '#FEE2E2' : low ? '#FEF3C7' : 'var(--surface)',
+      border:       `1px solid ${empty ? '#FECACA' : low ? '#FDE68A' : 'var(--border)'}`,
+      borderRadius: 'var(--radius-lg)',
+      padding:      'var(--space-4)',
+      boxShadow:    'var(--shadow-sm)'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}>
+        <span style={{
+          fontSize: 'var(--text-xs)', fontWeight: 700,
+          color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em'
+        }}>
+          SMS credits remaining
+        </span>
+        <span style={{
+          fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', fontWeight: 800,
+          color: empty ? '#991B1B' : low ? '#92400E' : 'var(--primary)'
+        }}>
+          {credits}
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 4 }}>
+            / {max}
+          </span>
+        </span>
+      </div>
+
+      <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 999 }}>
+        <div style={{
+          height:       '100%',
+          width:        `${pct}%`,
+          background:   empty ? '#EF4444' : low ? '#F59E0B' : 'var(--primary)',
+          borderRadius: 999,
+          transition:   'width 0.8s ease'
+        }} />
+      </div>
+
+      {empty && (
+        <p style={{ fontSize: 'var(--text-xs)', color: '#991B1B', marginTop: 'var(--space-2)', fontWeight: 600 }}>
+          No credits left — SMS automations are paused. Buy a bundle in the SMS Credits tab to resume.
+        </p>
+      )}
+      {low && !empty && (
+        <p style={{ fontSize: 'var(--text-xs)', color: '#92400E', marginTop: 'var(--space-2)' }}>
+          Running low — top up soon to avoid disruption to your automations.
+        </p>
+      )}
+    </div>
+  )
+}
 
 // ── STATUS BANNER ─────────────────────────────
 function StatusBanner({ billing }) {
@@ -187,34 +245,32 @@ function PaymentModal({ type, plan, smsBundle, branchName, token, onClose, onSuc
   const [txId,     setTxId]     = useState('')
   const [error,    setError]    = useState('')
 
-// Add this at the top of PaymentModal, with the other useState declarations
-const hasCreated = useRef(false)
+  const hasCreated = useRef(false)
 
-useEffect(() => {
-  // Guard against React Strict Mode double-invoke
-  if (hasCreated.current) return
-  hasCreated.current = true
+  useEffect(() => {
+    if (hasCreated.current) return
+    hasCreated.current = true
 
-  const create = async () => {
-    try {
-      const body = { type }
-      if (type === 'subscription' || type === 'upgrade') body.plan = plan
-      if (type === 'sms')    body.smsBundleKey = smsBundle
-      if (type === 'branch') body.branchDetails = { branchName }
+    const create = async () => {
+      try {
+        const body = { type }
+        if (type === 'subscription' || type === 'upgrade') body.plan = plan
+        if (type === 'sms')    body.smsBundleKey = smsBundle
+        if (type === 'branch') body.branchDetails = { branchName }
 
-      const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/request`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify(body)
-      })
-      const data = await res.json()
-      if (data.success) setPayment(data.payment)
-      else setError(data.message)
-    } catch { setError('Cannot connect to server.') }
-    finally { setCreating(false) }
-  }
-  create()
-}, [])
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/request`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body:    JSON.stringify(body)
+        })
+        const data = await res.json()
+        if (data.success) setPayment(data.payment)
+        else setError(data.message)
+      } catch { setError('Cannot connect to server.') }
+      finally { setCreating(false) }
+    }
+    create()
+  }, [])
 
   const handleSubmitProof = async () => {
     if (!txId.trim()) { setError('Please enter your MoMo transaction ID.'); return }
@@ -276,7 +332,6 @@ useEffect(() => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
               {error && <div className="form-error">{error}</div>}
 
-              {/* Amount */}
               <div style={{ background: 'var(--primary-light)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', textAlign: 'center' }}>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-1)' }}>
                   Amount to send
@@ -289,7 +344,6 @@ useEffect(() => {
                 </p>
               </div>
 
-              {/* MoMo instructions */}
               <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
                 <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
                   MoMo Payment Instructions
@@ -309,7 +363,6 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* Transaction ID */}
               <div>
                 <label className="form-label">Enter MoMo Transaction ID after paying *</label>
                 <input
@@ -351,8 +404,6 @@ function BranchesTab({ billing, token, onPayment }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-
-      {/* Info card */}
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)',
@@ -378,7 +429,6 @@ function BranchesTab({ billing, token, onPayment }) {
           </div>
         </div>
 
-        {/* What happens */}
         <div style={{
           background: 'var(--surface-2)', borderRadius: 'var(--radius-md)',
           padding: 'var(--space-4)', marginBottom: 'var(--space-5)'
@@ -398,7 +448,6 @@ function BranchesTab({ billing, token, onPayment }) {
           ))}
         </div>
 
-        {/* Branch name input */}
         <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
           <label className="form-label">New Branch Name *</label>
           <input
@@ -420,7 +469,6 @@ function BranchesTab({ billing, token, onPayment }) {
         </button>
       </div>
 
-      {/* Current branches count */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
         padding: 'var(--space-4) var(--space-5)',
@@ -457,10 +505,8 @@ export default function Billing() {
     finally { setLoading(false) }
   }, [token])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchBilling() }, [fetchBilling])
 
-  // type, plan, smsBundle, branchName
   const openPayment = (type, plan = null, smsBundle = null, branchName = null) => {
     setModal({ type, plan, smsBundle, branchName })
   }
@@ -531,6 +577,7 @@ export default function Billing() {
             borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)',
             boxShadow: 'var(--shadow-sm)'
           }}>
+            {/* Plan name — SMS credits display removed here, SMSCreditBar below handles it */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
               <div>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-1)' }}>Current plan</p>
@@ -538,20 +585,17 @@ export default function Billing() {
                   {billing.plan}
                 </h2>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>SMS Credits</p>
-                <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--primary)' }}>
-                  {billing.smsCredits}
-                </p>
-              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
-              <UsageCard label="Members"       current={billing.currentMembers} limit={billing.memberLimit}    color="var(--primary)" icon={Users}     />
-              <UsageCard label="Staff accounts" current={billing.currentStaff}  limit={billing.staffLimit}     color="var(--success)" icon={Shield}    />
-              <UsageCard label="Branches"       current={billing.allowedBranches} limit={billing.allowedBranches} color="var(--warning)" icon={GitBranch} />
+              <UsageCard label="Members"        current={billing.currentMembers}   limit={billing.memberLimit}     color="var(--primary)" icon={Users}     />
+              <UsageCard label="Staff accounts" current={billing.currentStaff}     limit={billing.staffLimit}      color="var(--success)" icon={Shield}    />
+              <UsageCard label="Branches"       current={billing.allowedBranches}  limit={billing.allowedBranches} color="var(--warning)" icon={GitBranch} />
             </div>
           </div>
+
+          {/* SMS Credit Bar — live balance with low/empty warnings */}
+          <SMSCreditBar credits={billing.smsCredits} plan={billing.plan} />
 
           {(billing.status === 'trial' || billing.status === 'expired') && (
             <div style={{
@@ -676,21 +720,9 @@ export default function Billing() {
       {/* ── SMS CREDITS ── */}
       {activeTab === 'sms' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-            display: 'flex', alignItems: 'center', gap: 'var(--space-5)', boxShadow: 'var(--shadow-sm)'
-          }}>
-            <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <MessageSquare size={24} color="var(--primary)" />
-            </div>
-            <div>
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Current SMS credits</p>
-              <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 800, color: 'var(--primary)' }}>
-                {billing?.smsCredits || 0}
-              </p>
-            </div>
-          </div>
+
+          {/* SMS Credit Bar replaces the old plain number display */}
+          <SMSCreditBar credits={billing?.smsCredits || 0} plan={billing?.plan} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-4)' }}>
             {SMS_BUNDLES.map(bundle => (
@@ -742,12 +774,13 @@ export default function Billing() {
       )}
     </div>
   )
-}// ─── HISTORY ROW ─────────────────────────────
-// Renders one payment row with Complete / Cancel actions on awaiting_payment
+}
+
+// ─── HISTORY ROW ─────────────────────────────
 function HistoryRow({ payment, token, onRefresh }) {
   const [cancelling,   setCancelling]   = useState(false)
-  const [showConfirm,  setShowConfirm]  = useState(false)  // inline confirm modal
-  const [cancelError,  setCancelError]  = useState('')     // error inside confirm modal
+  const [showConfirm,  setShowConfirm]  = useState(false)
+  const [cancelError,  setCancelError]  = useState('')
   const [showComplete, setShowComplete] = useState(false)
   const [txnId,        setTxnId]        = useState('')
   const [submitting,   setSubmitting]   = useState(false)
@@ -763,7 +796,6 @@ function HistoryRow({ payment, token, onRefresh }) {
 
   const status = STATUS_STYLES[payment.status] || STATUS_STYLES.awaiting_payment
 
-  // Friendly label for payment type
   const typeLabel = () => {
     if (payment.type === 'subscription' || payment.type === 'upgrade') {
       const planName = payment.plan
@@ -776,7 +808,6 @@ function HistoryRow({ payment, token, onRefresh }) {
     return payment.type
   }
 
-  // Called when user clicks OK inside the inline confirm modal
   const handleConfirmCancel = async () => {
     setCancelling(true)
     setCancelError('')
@@ -830,7 +861,6 @@ function HistoryRow({ payment, token, onRefresh }) {
         onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        {/* Description */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>
             {typeLabel()}
@@ -843,7 +873,6 @@ function HistoryRow({ payment, token, onRefresh }) {
           </p>
         </div>
 
-        {/* Status badge */}
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '3px 10px',
           borderRadius: 999, background: status.bg, color: status.color,
@@ -852,7 +881,6 @@ function HistoryRow({ payment, token, onRefresh }) {
           {status.label}
         </span>
 
-        {/* Amount */}
         <p style={{
           fontFamily: 'var(--font-heading)', fontWeight: 700,
           color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0,
@@ -861,7 +889,6 @@ function HistoryRow({ payment, token, onRefresh }) {
           GHS {payment.amount}
         </p>
 
-        {/* Action buttons — only shown for awaiting_payment */}
         {payment.status === 'awaiting_payment' && (
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
             <button
@@ -899,7 +926,6 @@ function HistoryRow({ payment, token, onRefresh }) {
                 alignItems: 'center', textAlign: 'center', gap: 'var(--space-4)',
                 padding: 'var(--space-4) 0'
               }}>
-                {/* Icon */}
                 <div style={{
                   width: 56, height: 56, borderRadius: '50%',
                   background: '#FEE2E2', display: 'flex',
@@ -918,7 +944,6 @@ function HistoryRow({ payment, token, onRefresh }) {
                   </p>
                 </div>
 
-                {/* Error message if cancel fails */}
                 {cancelError && (
                   <div className="form-error" style={{ width: '100%', textAlign: 'left' }}>
                     {cancelError}
@@ -926,18 +951,10 @@ function HistoryRow({ payment, token, onRefresh }) {
                 )}
 
                 <div style={{ display: 'flex', gap: 'var(--space-3)', width: '100%', justifyContent: 'center' }}>
-                  <button
-                    className="btn-outline"
-                    onClick={() => setShowConfirm(false)}
-                    disabled={cancelling}
-                  >
+                  <button className="btn-outline" onClick={() => setShowConfirm(false)} disabled={cancelling}>
                     Keep It
                   </button>
-                  <button
-                    className="btn-danger"
-                    onClick={handleConfirmCancel}
-                    disabled={cancelling}
-                  >
+                  <button className="btn-danger" onClick={handleConfirmCancel} disabled={cancelling}>
                     {cancelling ? 'Cancelling...' : 'Yes, Cancel It'}
                   </button>
                 </div>
@@ -958,8 +975,6 @@ function HistoryRow({ payment, token, onRefresh }) {
               </button>
             </div>
             <div className="modal-body">
-
-              {/* MoMo instructions reminder */}
               <div style={{
                 background: 'var(--primary-light)', borderRadius: 'var(--radius-md)',
                 padding: 'var(--space-4)', marginBottom: 'var(--space-5)'
@@ -1001,11 +1016,7 @@ function HistoryRow({ payment, token, onRefresh }) {
                   </p>
                 </div>
                 <div className="form-actions" style={{ marginTop: 'var(--space-5)' }}>
-                  <button
-                    type="button"
-                    className="btn-outline"
-                    onClick={() => setShowComplete(false)}
-                  >
+                  <button type="button" className="btn-outline" onClick={() => setShowComplete(false)}>
                     Close
                   </button>
                   <button type="submit" className="btn-primary" disabled={submitting}>
@@ -1013,7 +1024,6 @@ function HistoryRow({ payment, token, onRefresh }) {
                   </button>
                 </div>
               </form>
-
             </div>
           </div>
         </div>
@@ -1023,7 +1033,6 @@ function HistoryRow({ payment, token, onRefresh }) {
 }
 
 // ─── PAYMENT HISTORY ──────────────────────────
-// Fetches and renders all payment history for this org
 function PaymentHistory({ token }) {
   const [payments, setPayments] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -1040,7 +1049,6 @@ function PaymentHistory({ token }) {
     finally { setLoading(false) }
   }, [token])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPayments() }, [fetchPayments])
 
   if (loading) {
@@ -1058,7 +1066,6 @@ function PaymentHistory({ token }) {
       borderRadius: 'var(--radius-lg)', overflow: 'hidden',
       boxShadow: 'var(--shadow-sm)'
     }}>
-      {/* Table header */}
       <div style={{
         display: 'flex', alignItems: 'center',
         padding: 'var(--space-3) var(--space-5)',
@@ -1074,7 +1081,6 @@ function PaymentHistory({ token }) {
         <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0, minWidth: 80, textAlign: 'right' }}>
           Amount
         </p>
-        {/* spacer for action buttons column */}
         <div style={{ width: 180, flexShrink: 0 }} />
       </div>
 
