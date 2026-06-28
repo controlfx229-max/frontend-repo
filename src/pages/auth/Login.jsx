@@ -543,7 +543,7 @@ export default function Login() {
             <div className="login-mobile-logo-row">
               <Logo size={30} showText={false} />
               <span className="login-mobile-wordmark">MinistryOS</span>
-              <span className="login-mobile-badge">Ghana</span>
+              <span className="login-mobile-badge">GL🌏BAL</span>
             </div>
 
             {/* Headline */}
