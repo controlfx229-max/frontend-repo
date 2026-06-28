@@ -416,9 +416,37 @@ export default function Register() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        .reg-page { min-height: 100vh; display: flex; background: #fff; }
-        
-        /* LEFT BRAND PANEL */
+        .reg-page { min-height: 100vh; display: flex; background: #fff; flex-direction: row; }
+
+        /* ── MOBILE HEADER (hidden on desktop) ── */
+        .reg-mobile-header {
+          display: none;
+          flex-direction: column;
+          gap: 16px;
+          background: linear-gradient(145deg, #3730A3 0%, #4F46E5 45%, #6D28D9 100%);
+          padding: 28px 24px 24px;
+        }
+
+        .reg-mobile-features {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .reg-mobile-feature-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 20px;
+          padding: 5px 10px;
+          font-size: 12px;
+          color: rgba(255,255,255,0.9);
+          font-weight: 500;
+        }
+
+        /* ── LEFT BRAND PANEL ── */
         .reg-brand {
           width: 45%;
           background: linear-gradient(145deg, #3730A3 0%, #4F46E5 45%, #6D28D9 100%);
@@ -446,7 +474,7 @@ export default function Register() {
           bottom: -100px; right: -80px;
           pointer-events: none;
         }
-        
+
         .reg-brand-inner {
           position: relative;
           z-index: 2;
@@ -540,7 +568,7 @@ export default function Register() {
           margin: 0;
         }
 
-        /* RIGHT FORM PANEL */
+        /* ── RIGHT FORM PANEL ── */
         .reg-form-panel {
           flex: 1;
           display: flex;
@@ -624,21 +652,51 @@ export default function Register() {
           color: #D1D5DB;
         }
 
-        /* MOBILE */
+        /* ── MOBILE ── */
         @media (max-width: 900px) {
-          .reg-brand { display: none; }
           .reg-page { flex-direction: column; }
-          .reg-form-panel { padding-top: 32px; }
+          .reg-brand { display: none; }
+          .reg-mobile-header { display: flex; }
+          .reg-form-panel { padding-top: 32px; align-items: flex-start; }
         }
 
         @media (max-width: 480px) {
-          .reg-form-panel { padding: 24px 16px; padding-top: 28px; }
+          .reg-form-panel { padding: 24px 16px 28px; }
         }
       `}</style>
 
       <div className="reg-page">
 
-        {/* LEFT BRAND PANEL */}
+        {/* MOBILE HEADER — visible only on small screens */}
+        <div className="reg-mobile-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Logo size={36} showText={false} />
+            <div>
+              <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.2px' }}>
+                MinistryOS
+              </h1>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', margin: 0 }}>
+                30-day free trial · No credit card
+              </p>
+            </div>
+          </div>
+          <div className="reg-mobile-features">
+            {[
+              'Member management',
+              'Attendance tracking',
+              'Tithes & offerings',
+              'Smart automations',
+              'Church insights',
+            ].map((f, i) => (
+              <div className="reg-mobile-feature-pill" key={i}>
+                <CheckCircle size={11} color="rgba(255,255,255,0.7)" />
+                {f}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* LEFT BRAND PANEL — visible only on desktop */}
         <div className="reg-brand">
           <div className="reg-brand-inner">
 
