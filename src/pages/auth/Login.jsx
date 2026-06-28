@@ -552,8 +552,7 @@ export default function Login() {
               Run your church with <em>clarity</em> and confidence.
             </h1>
             <p className="login-mobile-body">
-              Purpose-built for Ghanaian churches — manage members, collect tithes
-              via MoMo, track attendance, and see real-time insights on any device.
+              Built for modern churches — manage members, track attendance, automate communication, manage finances, and gain real-time insights from anywhere.
             </p>
 
             {/* Feature pills in a 2×2 grid */}
