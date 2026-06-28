@@ -13,6 +13,7 @@ import AppLayout from './layouts/AppLayout'
 // Auth pages
 import Login    from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import LearnMore from './pages/auth/LearnMore'
 
 // Church app pages
 import Dashboard      from './pages/dashboard/Dashboard'
@@ -175,6 +176,7 @@ function AppRoutes() {
       <Route path="/2fa-setup"   element={<TwoFactorSetup />} />
       <Route path="/2fa-verify"  element={<TwoFactorVerify />} />
       <Route path="/2fa-backup"  element={<BackupCodeVerify />} />
+      <Route path="/learn-more" element={<LearnMore />} />
 
 
 
