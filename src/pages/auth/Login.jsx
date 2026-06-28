@@ -493,7 +493,7 @@ export default function Login() {
             <div className="login-logo-row">
               <Logo size={36} showText={false} />
               <span className="login-logo-wordmark">MinistryOS</span>
-              <span className="login-logo-badge">Ghana</span>
+              <span className="login-logo-badge">GL🌏BAL</span>
             </div>
 
             <div className="login-headline">
@@ -502,9 +502,7 @@ export default function Login() {
                 Run your church with <em>clarity</em> and confidence.
               </h1>
               <p className="login-headline-body">
-                MinistryOS is purpose-built for Ghanaian churches. Manage your members,
-                track attendance, collect tithes via Mobile Money, send automated messages,
-                and see your church's health at a glance — all from one place, on any device.
+            Built for modern churches — manage members, track attendance, automate communication, manage finances, and gain real-time insights from anywhere.
               </p>
             </div>
 
