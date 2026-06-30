@@ -120,6 +120,16 @@ export default function LearnMore() {
   const [showVideo, setShowVideo] = useState(false)
 
   useEffect(() => {
+    // Some browsers restore the previous scroll position on load/navigation.
+    // Force this page to always start at the very top so the hero headline
+    // is never hidden behind the sticky nav bars.
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+    window.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', fn)
     return () => window.removeEventListener('scroll', fn)
