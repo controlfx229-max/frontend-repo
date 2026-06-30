@@ -354,7 +354,8 @@ export default function LearnMore() {
           .lmr-quicknav-in { padding: 7px 14px; }
           .lmr-quicknav-btn { font-size: 11.5px; padding: 5px 12px; }
 
-          .lmr-hero { padding: 108px 16px 36px; }
+          .lmr-hero { padding: 168px 16px 36px; }
+          .lmr-h1 { font-size: clamp(26px,7vw,34px); line-height: 1.15; }
           .lmr-hero-btns { flex-direction: column; align-items: stretch; }
           .lmr-btn-main, .lmr-btn-ghost { justify-content: center; }
 
