@@ -26,6 +26,8 @@ const IMG = {
   settingsBranch: '/images/Settings Branches.png',
   settingsTheme:  '/images/Theme mode.png',
   automation:     '/images/Automation.png',
+  automation1:    '/images/Automations 1.png',
+  automation2:    '/images/Automations 2.png',
   billingPlans:   '/images/Billing plans.png',
   billingSms:     '/images/Billing sms credits.png',
   billingBranch:  '/images/Billing branches.png',
@@ -39,6 +41,7 @@ const QUICK_NAV = [
   { id: 'attendance',    label: 'Attendance'    },
   { id: 'departments',   label: 'Departments'   },
   { id: 'communications', label: 'Communications' },
+  { id: 'automations',   label: 'Automations'   },
   { id: 'reports',       label: 'Reports'       },
   { id: 'settings',      label: 'Settings'      },
   { id: 'pricing',       label: 'Pricing'       },
@@ -488,7 +491,7 @@ export default function LearnMore() {
                   <div className="lmr-demo-play">
                     <Play size={24} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
                   </div>
-                  <span className="lmr-demo-label">▶ Watch the 2-minute demo coming soon...</span>
+                  <span className="lmr-demo-label">▶ Watch the 2-minute demo   coming soon...</span>
                 </div>
               )}
             </div>
@@ -654,12 +657,52 @@ export default function LearnMore() {
 
         <div className="lmr-div" />
 
-        {/* ── FEATURE 06 — REPORTS ── */}
+        {/* ── FEATURE 06 — AUTOMATIONS ── */}
+        <section id="automations" style={{ background: '#fff', padding: '72px 20px' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+            <div className="fr-grid fr-rev">
+              <div className="fr-text">
+                <p className="lmr-eyebrow" style={{ color: '#D97706', margin: '0 0 12px' }}>06 · Smart Automations</p>
+                <h2 className="lmr-h2">Set it once. It runs itself.</h2>
+                <p className="lmr-body" style={{ marginBottom: 24 }}>
+                  Birthday wishes, absence follow-ups, event reminders, and welcome messages for new members —
+                  all triggered automatically, with full control to preview, pause, or run any of them manually.
+                </p>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {[
+                    { bold: 'Consecutive Absence Alert:', rest: 'Automatically reaches out to members who have missed a number of services in a row.' },
+                    { bold: 'Birthday Wishes:', rest: 'Sends a birthday message to every member automatically, every day at 8AM.' },
+                    { bold: 'Event Reminders & New Member Welcome:', rest: 'Reminders fire before upcoming events, and welcome messages send the instant a new member is added.' },
+                    { bold: 'Full visibility:', rest: 'See last run time, total messages sent, and active/inactive status for every automation at a glance.' },
+                  ].map((b, i) => (
+                    <li key={i} style={{ display: 'flex', gap: 10 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                        <Check size={11} color="#D97706" strokeWidth={3} />
+                      </div>
+                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.65 }}>
+                        <strong>{b.bold}</strong>{' '}{b.rest}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="fr-screen" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <BrowserFrame src={IMG.automation1} alt="Automations Overview" />
+                <BrowserFrame src={IMG.automation2} alt="Automations List" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="lmr-div" />
+
+        {/* ── FEATURE 07 — REPORTS ── */}
         <section id="reports" style={{ background: '#fff', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid">
               <div className="fr-text">
-                <p className="lmr-eyebrow" style={{ color: '#0891B2', margin: '0 0 12px' }}>06 · Reports & Analytics</p>
+                <p className="lmr-eyebrow" style={{ color: '#0891B2', margin: '0 0 12px' }}>07 · Reports & Analytics</p>
+
                 <h2 className="lmr-h2">See your church's health clearly.</h2>
                 <p className="lmr-body" style={{ marginBottom: 24 }}>
                   Four report tabs — Overview, Members, Attendance, and Finance — give your leadership
@@ -696,7 +739,7 @@ export default function LearnMore() {
         {/* ── FEATURE 07 — SETTINGS 2×2 ── */}
         <section id="settings" style={{ background: '#F8F7FF', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>07 · Settings & Administration</p>
+            <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>08 · Settings & Administration</p>
             <h2 className="lmr-h2">Built for how churches are actually run.</h2>
             <p className="lmr-body" style={{ maxWidth: 580 }}>
               Give each staff member their own login with the right access level. Manage multiple branches.
@@ -778,7 +821,7 @@ export default function LearnMore() {
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid">
               <div className="fr-text">
-                <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>08 · Global Search</p>
+                <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>09 · Global Search</p>
                 <h2 className="lmr-h2">Find anything, instantly.</h2>
                 <p className="lmr-body" style={{ marginBottom: 22 }}>
                   Press the search icon from anywhere in MinistryOS. Type a member name, a module, or a keyword — and jump there in one click. No more clicking through menus to find the page you need.
