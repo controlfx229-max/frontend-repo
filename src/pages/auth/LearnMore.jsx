@@ -360,14 +360,15 @@ export default function LearnMore() {
         ══════════════════════════════════════ */
         @media (max-width: 600px) {
           .lmr-nav { height: 52px; }
-          /* The quick-nav no longer floats fixed on mobile — it scrolls
-             away with the page instead of stacking on top of the main nav
-             and overlapping the hero headline. */
-          .lmr-quicknav { position: static; top: auto; }
+          /* Sticky (not fixed, not static): it sits naturally below the
+             main nav on load — so it never overlaps the hero — but then
+             sticks to the top of the screen once the page scrolls past it,
+             so the jump-to-section list stays usable while browsing. */
+          .lmr-quicknav { position: sticky; top: 52px; margin-top: 52px; z-index: 205; }
           .lmr-quicknav-in { padding: 7px 14px; }
           .lmr-quicknav-btn { font-size: 11.5px; padding: 5px 12px; }
 
-          .lmr-hero { padding: 28px 16px 36px; }
+          .lmr-hero { padding: 24px 16px 36px; }
           .lmr-h1 { font-size: clamp(26px,7vw,34px); line-height: 1.15; }
           .lmr-hero-btns { flex-direction: column; align-items: stretch; }
           .lmr-btn-main, .lmr-btn-ghost { justify-content: center; }
@@ -406,7 +407,7 @@ export default function LearnMore() {
           /* Settings */
           .lmr-set-g { grid-template-columns: 1fr; gap: 32px; margin-top: 28px; }
 
-          .lmr section[id], .lmr div[id] { scroll-margin-top: 60px; }
+          .lmr section[id], .lmr div[id] { scroll-margin-top: 88px; }
         }
       `}</style>
 
