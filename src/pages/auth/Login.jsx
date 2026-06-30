@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { Eye, EyeOff, ArrowRight, Loader2, Play, Users, BarChart2, Zap, CreditCard } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Loader2, Users, BarChart2, Zap, CreditCard } from 'lucide-react'
 import Logo from '../../components/Logo'
 
 const FEATURES = [
@@ -521,11 +521,11 @@ export default function Login() {
 
             <a href="/learn-more" className="login-learn-cta">
               <div className="login-learn-cta-play">
-                <Play size={13} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
+                <ArrowRight size={14} color="#4F46E5" />
               </div>
               <div className="login-learn-cta-text">
-                <p>See MinistryOS in action</p>
-                <p>Watch the demo · Tour all features</p>
+                <p>Learn More</p>
+                <p>See features, pricing & how it works</p>
               </div>
               <ArrowRight size={14} className="login-learn-cta-arrow" />
             </a>
@@ -570,11 +570,11 @@ export default function Login() {
             {/* Learn More CTA */}
             <a href="/learn-more" className="login-mobile-learn-cta">
               <div className="login-mobile-learn-play">
-                <Play size={12} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 1 }} />
+                <ArrowRight size={13} color="#4F46E5" />
               </div>
               <div className="login-mobile-learn-cta-text">
-                <p>See MinistryOS in action</p>
-                <p>Watch the demo · Tour all features</p>
+                <p>Learn More</p>
+                <p>See features, pricing & how it works</p>
               </div>
               <ArrowRight size={14} className="login-mobile-learn-arrow" />
             </a>
