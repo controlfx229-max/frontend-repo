@@ -488,7 +488,7 @@ export default function LearnMore() {
                   <div className="lmr-demo-play">
                     <Play size={24} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
                   </div>
-                  <span className="lmr-demo-label">▶ Watch the 2-minute demo</span>
+                  <span className="lmr-demo-label">▶ Watch the 2-minute demo coming soon...</span>
                 </div>
               )}
             </div>

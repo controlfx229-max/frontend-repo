@@ -138,14 +138,19 @@ function RequireSubscription({ children }) {
 // ─────────────────────────────────────────────
 // SMART REDIRECT
 // Sends logged-in users to the right place
-// based on role and subscription status
+// based on role and subscription status.
+// For visitors who aren't logged in, this now
+// falls through to the public LearnMore landing
+// page instead of forcing a /login redirect —
+// LearnMore itself lives at "/" (see routes below),
+// so this only fires for genuinely unmatched paths.
 // ─────────────────────────────────────────────
 function SmartRedirect() {
   const { user, token, loading } = useAuth()
 
   if (loading) return <AppLoading />
 
-  if (!token || !user) return <Navigate to="/login" replace />
+  if (!token || !user) return <Navigate to="/" replace />
 
   if (user.role === 'PLATFORM_OWNER') {
     return <Navigate to="/admin-platform" replace />
@@ -169,6 +174,12 @@ function AppRoutes() {
     <Routes>
 
       {/* ── PUBLIC ────────────────────────────── */}
+      {/* LearnMore is now the landing page at "/".
+          "/learn-more" is kept as an alias so any
+          existing links, shares, or bookmarks
+          pointing there keep working unchanged. */}
+      <Route path="/"          element={<LearnMore />} />
+      <Route path="/learn-more" element={<LearnMore />} />
       <Route path="/login"    element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password"  element={<ForgotPassword />} />
@@ -176,7 +187,6 @@ function AppRoutes() {
       <Route path="/2fa-setup"   element={<TwoFactorSetup />} />
       <Route path="/2fa-verify"  element={<TwoFactorVerify />} />
       <Route path="/2fa-backup"  element={<BackupCodeVerify />} />
-      <Route path="/learn-more" element={<LearnMore />} />
 
 
 
