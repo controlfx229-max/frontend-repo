@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Play } from 'lucide-react'
 import Logo from '../../components/Logo'
 
 /* ── IMAGE PATHS ──────────────────────────────────────────────────────────────
@@ -31,6 +31,19 @@ const IMG = {
   billingBranch:  '/images/Billing branches.png',
 }
 
+/* ── QUICK NAV SECTIONS ──────────────────────────────────────────────────── */
+const QUICK_NAV = [
+  { id: 'dashboard',     label: 'Dashboard'     },
+  { id: 'members',       label: 'Members'       },
+  { id: 'profiles',      label: 'Profiles'      },
+  { id: 'attendance',    label: 'Attendance'    },
+  { id: 'departments',   label: 'Departments'   },
+  { id: 'communications', label: 'Communications' },
+  { id: 'reports',       label: 'Reports'       },
+  { id: 'settings',      label: 'Settings'      },
+  { id: 'pricing',       label: 'Pricing'       },
+]
+
 /* ── BROWSER FRAME ───────────────────────────────────────────────────────── */
 function BrowserFrame({ src, alt }) {
   return (
@@ -56,16 +69,16 @@ function BrowserFrame({ src, alt }) {
           </span>
         </div>
       </div>
-      <img src={src} alt={alt} loading="lazy"
-        style={{ width: '100%', display: 'block', maxHeight: 460, objectFit: 'cover', objectPosition: 'top' }} />
+      <img src={src} alt={alt} loading="lazy" className="lmr-bf-img"
+        style={{ width: '100%', display: 'block', background: '#F9FAFB', objectFit: 'contain', maxHeight: 520 }} />
     </div>
   )
 }
 
 /* ── FEATURE ROW ─────────────────────────────────────────────────────────── */
-function FeatureRow({ eyebrow, title, body, bullets, img, alt, reverse, accent, bg }) {
+function FeatureRow({ id, eyebrow, title, body, bullets, img, alt, reverse, accent, bg }) {
   return (
-    <section style={{ background: bg, padding: '72px 20px' }}>
+    <section id={id} style={{ background: bg, padding: '72px 20px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div className={`fr-grid${reverse ? ' fr-rev' : ''}`}>
           <div className="fr-text">
@@ -104,12 +117,18 @@ function FeatureRow({ eyebrow, title, body, bullets, img, alt, reverse, accent, 
 export default function LearnMore() {
   const [scrolled,  setScrolled]  = useState(false)
   const [memberTab, setMemberTab] = useState('overview')
+  const [showVideo, setShowVideo] = useState(false)
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', fn)
     return () => window.removeEventListener('scroll', fn)
   }, [])
+
+  const scrollTo = (id) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const memberTabs = {
     overview: {
@@ -144,11 +163,14 @@ export default function LearnMore() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
         .lmr { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; background: #fff; overflow-x: hidden; }
 
+        /* Offset anchored sections so they don't hide under the sticky nav bars */
+        .lmr section[id], .lmr div[id] { scroll-margin-top: 104px; }
+
         /* ── NAV ── */
-        .lmr-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: 60px; display: flex; align-items: center; padding: 0 20px; transition: background .2s, box-shadow .2s; }
-        .lmr-nav.on { background: rgba(255,255,255,.96); backdrop-filter: blur(16px); box-shadow: 0 1px 0 rgba(0,0,0,.07); }
+        .lmr-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 210; height: 60px; display: flex; align-items: center; padding: 0 20px; transition: background .2s, box-shadow .2s; background: rgba(255,255,255,.96); backdrop-filter: blur(16px); box-shadow: 0 1px 0 rgba(0,0,0,.07); }
         .lmr-nav-in { max-width: 1100px; margin: 0 auto; width: 100%; display: flex; align-items: center; justify-content: space-between; }
         .lmr-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 17px; font-weight: 800; color: #111827; letter-spacing: -.4px; }
         .lmr-nav-r { display: flex; align-items: center; gap: 8px; }
@@ -157,31 +179,52 @@ export default function LearnMore() {
         .lmr-nav-btn { font-size: 13px; font-weight: 700; color: #fff; background: #4F46E5; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; text-decoration: none; white-space: nowrap; }
         .lmr-nav-btn:hover { background: #4338CA; }
 
+        /* ── QUICK NAV (clickable jump-to-section bar) ── */
+        .lmr-quicknav { position: fixed; top: 60px; left: 0; right: 0; z-index: 205; background: #fff; border-bottom: 1px solid #EEF0F4; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+        .lmr-quicknav-in { max-width: 1100px; margin: 0 auto; display: flex; gap: 4px; overflow-x: auto; padding: 8px 20px; scrollbar-width: none; }
+        .lmr-quicknav-in::-webkit-scrollbar { display: none; }
+        .lmr-quicknav-btn { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: #4B5563; background: #F8F7FF; border: 1px solid #EDE9FE; border-radius: 99px; padding: 6px 14px; cursor: pointer; white-space: nowrap; transition: background .12s, color .12s, border-color .12s; }
+        .lmr-quicknav-btn:hover { background: #EEF2FF; color: #4F46E5; border-color: #C7D2FE; }
+
         /* ── HERO ── */
-        .lmr-hero { min-height: 100vh; background: linear-gradient(155deg,#1E1B4B 0%,#312E81 35%,#4F46E5 70%,#6D28D9 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 20px 80px; position: relative; overflow: hidden; }
+        .lmr-hero { background: linear-gradient(155deg,#1E1B4B 0%,#312E81 35%,#4F46E5 70%,#6D28D9 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 152px 20px 48px; position: relative; overflow: hidden; }
         .lmr-hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px); background-size: 64px 64px; pointer-events: none; }
         .lmr-hero-glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle,rgba(139,92,246,.3) 0%,transparent 65%); top: 50%; left: 50%; transform: translate(-50%,-60%); pointer-events: none; }
         .lmr-hero-body { position: relative; z-index: 2; max-width: 840px; width: 100%; }
-        .lmr-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #A5B4FC; background: rgba(99,102,241,.18); border: 1px solid rgba(165,180,252,.3); padding: 6px 14px; border-radius: 99px; margin-bottom: 24px; }
+        .lmr-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #A5B4FC; background: rgba(99,102,241,.18); border: 1px solid rgba(165,180,252,.3); padding: 6px 14px; border-radius: 99px; margin-bottom: 20px; }
         .lmr-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #A5B4FC; animation: lmr-pulse 2s infinite; }
         @keyframes lmr-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-        .lmr-h1 { font-size: clamp(32px,6vw,78px); font-weight: 900; color: #fff; line-height: 1.05; letter-spacing: clamp(-1px,-0.04em,-3px); margin-bottom: 20px; }
+        .lmr-h1 { font-size: clamp(28px,5vw,58px); font-weight: 900; color: #fff; line-height: 1.08; letter-spacing: clamp(-1px,-0.04em,-2.4px); margin-bottom: 16px; }
         .lmr-h1 em { font-style: normal; background: linear-gradient(90deg,#A5B4FC,#C4B5FD,#F9A8D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .lmr-sub { font-size: clamp(15px,1.8vw,18px); color: rgba(255,255,255,.65); max-width: 560px; margin: 0 auto 36px; line-height: 1.75; }
-        .lmr-hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .lmr-sub { font-size: clamp(14px,1.6vw,17px); color: rgba(255,255,255,.65); max-width: 540px; margin: 0 auto 28px; line-height: 1.7; }
+        .lmr-hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
         .lmr-btn-main { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #4F46E5; font-size: 14px; font-weight: 800; padding: 13px 22px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; box-shadow: 0 4px 24px rgba(0,0,0,.2); transition: transform .15s,box-shadow .15s; }
         .lmr-btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.25); }
         .lmr-btn-ghost { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,.8); font-size: 14px; font-weight: 600; text-decoration: none; padding: 13px 18px; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; transition: background .15s; }
         .lmr-btn-ghost:hover { background: rgba(255,255,255,.08); }
 
+        /* Scroll-down affordance so first-timers know there's more below */
+        .lmr-scrolldown { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+        .lmr-scrolldown svg { animation: lmr-bounce 1.6s infinite; }
+        @keyframes lmr-bounce { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(4px); } }
+
         /* ── DASHBOARD SHOWCASE ── */
-        .lmr-dash-show { background: linear-gradient(180deg,#1E1B4B 0%,#312E81 100%); padding: 0 20px 64px; }
+        .lmr-dash-show { background: linear-gradient(180deg,#1E1B4B 0%,#312E81 100%); padding: 0 20px 56px; }
         .lmr-dash-frame { max-width: 1000px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08); }
         .lmr-dash-chrome { height: 36px; background: #1F2937; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; padding: 0 14px; gap: 6px; }
         .lmr-dash-dot { width: 10px; height: 10px; border-radius: 50%; }
         .lmr-dash-url { flex: 1; margin: 0 10px; background: rgba(255,255,255,.05); border-radius: 4px; height: 20px; display: flex; align-items: center; padding: 0 10px; }
         .lmr-dash-url span { font-size: 10px; color: rgba(255,255,255,.35); font-family: monospace; }
         .lmr-dash-cap { text-align: center; color: rgba(255,255,255,.4); font-size: 12px; margin-top: 16px; padding: 0 20px; }
+
+        /* ── DEMO VIDEO (sits right under the dashboard screenshot) ── */
+        .lmr-demo-wrap { max-width: 1000px; margin: 28px auto 0; }
+        .lmr-demo-card { border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); }
+        .lmr-demo-thumb { position: relative; aspect-ratio: 16/9; background: linear-gradient(135deg,#312E81,#4F46E5); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lmr-demo-play { width: 64px; height: 64px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(0,0,0,.3); transition: transform .15s; }
+        .lmr-demo-thumb:hover .lmr-demo-play { transform: scale(1.08); }
+        .lmr-demo-label { position: absolute; bottom: 14px; left: 16px; color: #fff; font-size: 13px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+        .lmr-demo-video { width: 100%; aspect-ratio: 16/9; display: block; background: #000; }
 
         /* ── STATS ── */
         .lmr-stats { background: #F8F7FF; border-top: 1px solid #EDE9FE; border-bottom: 1px solid #EDE9FE; padding: 48px 20px; }
@@ -296,26 +339,36 @@ export default function LearnMore() {
 
           /* Nav link */
           .lmr-nav-link { display: none; }
+
+          .lmr-hero { padding-top: 132px; }
+          .lmr-quicknav { top: 56px; }
+          .lmr section[id], .lmr div[id] { scroll-margin-top: 96px; }
         }
 
         /* ══════════════════════════════════════
            RESPONSIVE — MOBILE (≤600px)
         ══════════════════════════════════════ */
         @media (max-width: 600px) {
-          .lmr-hero { padding: 96px 16px 56px; min-height: auto; }
+          .lmr-nav { height: 52px; }
+          .lmr-quicknav { top: 52px; }
+          .lmr-quicknav-in { padding: 7px 14px; }
+          .lmr-quicknav-btn { font-size: 11.5px; padding: 5px 12px; }
+
+          .lmr-hero { padding: 108px 16px 36px; }
           .lmr-hero-btns { flex-direction: column; align-items: stretch; }
           .lmr-btn-main, .lmr-btn-ghost { justify-content: center; }
 
-          .lmr-dash-show { padding: 0 12px 48px; }
+          .lmr-dash-show { padding: 0 12px 40px; }
 
           /* On small screens cap the browser frame image height so it doesn't dwarf the screen */
-          .lmr-dash-frame img { max-height: 240px; }
+          .lmr-dash-frame img { max-height: 280px; }
+          .lmr-demo-wrap { margin-top: 20px; }
 
           /* Feature section paddings */
-          section { padding-top: 56px !important; padding-bottom: 56px !important; padding-left: 16px !important; padding-right: 16px !important; }
+          section { padding-top: 48px !important; padding-bottom: 48px !important; padding-left: 16px !important; padding-right: 16px !important; }
 
           /* Browser frame images: cap height on mobile so they don't scroll forever */
-          .lmr-bf-img { max-height: 260px !important; }
+          .lmr-bf-img { max-height: 340px !important; }
 
           /* Stats strip */
           .lmr-stats { padding: 32px 16px; }
@@ -338,13 +391,15 @@ export default function LearnMore() {
 
           /* Settings */
           .lmr-set-g { grid-template-columns: 1fr; gap: 32px; margin-top: 28px; }
+
+          .lmr section[id], .lmr div[id] { scroll-margin-top: 88px; }
         }
       `}</style>
 
       <div className="lmr">
 
         {/* ── NAV ── */}
-        <nav className={`lmr-nav${scrolled ? ' on' : ''}`}>
+        <nav className="lmr-nav">
           <div className="lmr-nav-in">
             <a href="/" className="lmr-logo">
               <Logo size={30} showText={false} />
@@ -356,6 +411,17 @@ export default function LearnMore() {
             </div>
           </div>
         </nav>
+
+        {/* ── QUICK NAV: clickable jump-to-section list ── */}
+        <div className="lmr-quicknav">
+          <div className="lmr-quicknav-in">
+            {QUICK_NAV.map(({ id, label }) => (
+              <button key={id} className="lmr-quicknav-btn" onClick={() => scrollTo(id)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* ── HERO ── */}
         <section className="lmr-hero">
@@ -378,11 +444,14 @@ export default function LearnMore() {
                 Sign into your account
               </a>
             </div>
+            <button className="lmr-scrolldown" onClick={() => scrollTo('dashboard')}>
+              See it in action <ChevronDown size={14} />
+            </button>
           </div>
         </section>
 
         {/* ── DASHBOARD SCREENSHOT ── */}
-        <div className="lmr-dash-show">
+        <div className="lmr-dash-show" id="dashboard">
           <div className="lmr-dash-frame">
             <div className="lmr-dash-chrome">
               <div className="lmr-dash-dot" style={{ background: '#FC5858' }} />
@@ -390,9 +459,25 @@ export default function LearnMore() {
               <div className="lmr-dash-dot" style={{ background: '#58FC85' }} />
               <div className="lmr-dash-url"><span>ministryosapp.com/dashboard</span></div>
             </div>
-            <img src={IMG.dashboard} alt="MinistryOS Dashboard" style={{ width: '100%', display: 'block', maxHeight: 460, objectFit: 'cover', objectPosition: 'top' }} />
+            <img src={IMG.dashboard} alt="MinistryOS Dashboard" style={{ width: '100%', display: 'block', background: '#F9FAFB', objectFit: 'contain', maxHeight: 520 }} />
           </div>
           <p className="lmr-dash-cap">The Dashboard — your church's pulse, every time you open the app</p>
+
+          {/* Demo video — sits right under the dashboard screenshot, as requested */}
+          <div className="lmr-demo-wrap">
+            <div className="lmr-demo-card">
+              {showVideo ? (
+                <video className="lmr-demo-video" src="/videos/ministryos-demo.mp4" controls autoPlay />
+              ) : (
+                <div className="lmr-demo-thumb" onClick={() => setShowVideo(true)}>
+                  <div className="lmr-demo-play">
+                    <Play size={24} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
+                  </div>
+                  <span className="lmr-demo-label">▶ Watch the 2-minute demo</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── STATS STRIP ── */}
@@ -414,6 +499,7 @@ export default function LearnMore() {
 
         {/* ── FEATURE 01 — MEMBERS LIST ── */}
         <FeatureRow
+          id="members"
           eyebrow="01 · Member Management"
           title="Every member, fully known."
           body="No more notebooks or scattered contact lists. MinistryOS gives every church member a complete digital profile — searchable by your whole team from any device."
@@ -432,7 +518,7 @@ export default function LearnMore() {
         <div className="lmr-div" />
 
         {/* ── FEATURE 02 — MEMBER PROFILE (tabbed) ── */}
-        <section style={{ background: '#F8F7FF', padding: '72px 20px' }}>
+        <section id="profiles" style={{ background: '#F8F7FF', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid fr-rev">
               <div className="fr-text">
@@ -478,6 +564,7 @@ export default function LearnMore() {
 
         {/* ── FEATURE 03 — ATTENDANCE ── */}
         <FeatureRow
+          id="attendance"
           eyebrow="03 · Attendance Tracking"
           title="Mark attendance in under a minute."
           body="Create a service, search for each member by name or member ID, and tap to mark them present. MinistryOS handles the counting, history, and reporting automatically."
@@ -513,6 +600,7 @@ export default function LearnMore() {
 
         {/* ── FEATURE 04 — DEPARTMENTS ── */}
         <FeatureRow
+          id="departments"
           eyebrow="04 · Departments & Cell Groups"
           title="Structure your church, cleanly."
           body="Create departments like Media, Protocol, or Worship. Assign a leader, add members, and expand to see everyone inside. Cell groups live separately — not buried under departments."
@@ -533,6 +621,7 @@ export default function LearnMore() {
 
         {/* ── FEATURE 05 — COMMUNICATIONS ── */}
         <FeatureRow
+          id="communications"
           eyebrow="05 · Communications"
           title="Reach your whole church with one SMS."
           body="Type your message, pick your audience, and send. MinistryOS shows you exactly how many people will receive it before you hit send — no guessing, no wasted credits."
@@ -551,7 +640,7 @@ export default function LearnMore() {
         <div className="lmr-div" />
 
         {/* ── FEATURE 06 — REPORTS ── */}
-        <section style={{ background: '#fff', padding: '72px 20px' }}>
+        <section id="reports" style={{ background: '#fff', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid">
               <div className="fr-text">
@@ -590,7 +679,7 @@ export default function LearnMore() {
         <div className="lmr-div" />
 
         {/* ── FEATURE 07 — SETTINGS 2×2 ── */}
-        <section style={{ background: '#F8F7FF', padding: '72px 20px' }}>
+        <section id="settings" style={{ background: '#F8F7FF', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>07 · Settings & Administration</p>
             <h2 className="lmr-h2">Built for how churches are actually run.</h2>
@@ -700,7 +789,7 @@ export default function LearnMore() {
         </section>
 
         {/* ── PRICING ── */}
-        <section style={{ background: '#fff', padding: '80px 20px' }}>
+        <section id="pricing" style={{ background: '#fff', padding: '80px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div style={{ textAlign: 'center', marginBottom: 48 }}>
               <p className="lmr-eyebrow" style={{ color: '#4F46E5', marginBottom: 12 }}>Transparent pricing</p>
