@@ -160,6 +160,20 @@ export default function Login() {
           max-width: 340px;
         }
 
+        .login-trial-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 14px;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 20px;
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #fff;
+        }
+
         /* Feature list */
         .login-features {
           display: flex;
@@ -315,7 +329,21 @@ export default function Login() {
           font-size: 13px;
           line-height: 1.65;
           color: rgba(255,255,255,0.6);
-          margin: 0 0 20px;
+          margin: 0 0 14px;
+        }
+
+        .login-mobile-trial-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 16px;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 20px;
+          padding: 6px 12px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: #fff;
         }
 
         /* Feature pills — 2×2 grid on mobile */
@@ -451,6 +479,14 @@ export default function Login() {
         }
         .btn-register:hover { background: #F5F3FF; }
 
+        .login-trial-note {
+          margin-top: 12px;
+          text-align: center;
+          font-size: 12.5px;
+          color: #4F46E5;
+          font-weight: 600;
+        }
+
         .login-footer {
           margin-top: 32px;
           text-align: center;
@@ -504,6 +540,7 @@ export default function Login() {
               <p className="login-headline-body">
             Built for modern churches — manage members, track attendance, automate communication, manage finances, and gain real-time insights from anywhere.
               </p>
+              <span className="login-trial-pill">🎁 New here? Get a 1-month free trial + 200 free SMS credits</span>
             </div>
 
             <div className="login-features">
@@ -552,6 +589,7 @@ export default function Login() {
             <p className="login-mobile-body">
               Built for modern churches — manage members, track attendance, automate communication, manage finances, and gain real-time insights from anywhere.
             </p>
+            <span className="login-mobile-trial-pill">🎁 New here? 1-month free trial + 200 free SMS</span>
 
             {/* Feature pills in a 2×2 grid */}
             <div className="login-mobile-features">
@@ -637,6 +675,7 @@ export default function Login() {
               <a href="/register" className="btn-register">
                 Register Your Church <ArrowRight size={16} />
               </a>
+              <p className="login-trial-note">1-month free trial · 200 free SMS credits · No card required</p>
             </div>
 
             <p className="login-footer">© 2026 EM Control IT Solutions · MinistryOS</p>

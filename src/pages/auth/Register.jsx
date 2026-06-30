@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   ArrowRight, ArrowLeft,
   Loader2, Eye, EyeOff, CheckCircle,
-  Building2, User, MapPin, Play,
+  Building2, User,
   Users, CreditCard, Zap, BarChart2
 } from 'lucide-react'
 import Logo from '../../components/Logo'
@@ -33,7 +33,7 @@ const FEATURES = [
 function StepIndicator({ current, total }) {
   return (
     <div style={{
-      display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '32px'
+      display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap'
     }}>
       {Array.from({ length: total }).map((_, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -43,7 +43,7 @@ function StepIndicator({ current, total }) {
             border: `2px solid ${i < current ? '#4F46E5' : i === current ? '#4F46E5' : '#D1D5DB'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '13px', fontWeight: 700, color: i <= current ? '#fff' : '#6B7280',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease', flexShrink: 0
           }}>
             {i < current ? <CheckCircle size={14} /> : <span>{i + 1}</span>}
           </div>
@@ -108,7 +108,7 @@ function StepChurch({ form, onChange, error }) {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="reg-grid-2">
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
               Denomination *
@@ -141,7 +141,7 @@ function StepChurch({ form, onChange, error }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="reg-grid-2">
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
               Church Email *
@@ -219,7 +219,7 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword }) {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="reg-grid-2">
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
               Your Email *
@@ -290,13 +290,13 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword }) {
         </div>
 
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '12px',
+          display: 'flex', alignItems: 'flex-start', gap: '12px',
           padding: '12px 14px', borderRadius: '10px',
           background: '#ECFDF5', border: '1px solid #D1FAE5'
         }}>
-          <CheckCircle size={16} color="#059669" style={{ flexShrink: 0 }} />
-          <p style={{ fontSize: '13px', color: '#065F46', margin: 0 }}>
-            You'll start on a <strong>30-day free trial</strong> — no credit card required.
+          <CheckCircle size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <p style={{ fontSize: '13px', color: '#065F46', margin: 0, lineHeight: 1.5 }}>
+            You'll start on a <strong>1-month free trial</strong> with <strong>200 free SMS credits</strong> included — no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
           </p>
         </div>
       </div>
@@ -320,7 +320,7 @@ function StepSuccess({ churchName, adminName }) {
         </h2>
         <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: 1.6 }}>
           Welcome to MinistryOS, <strong>{adminName}</strong>.<br />
-          <strong>{churchName}</strong> is ready to go.
+          <strong>{churchName}</strong> is ready to go, with your <strong>1-month free trial</strong> and <strong>200 free SMS credits</strong> active.
         </p>
       </div>
       <div style={{
@@ -414,17 +414,39 @@ export default function Register() {
   return (
     <>
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        .reg-page { min-height: 100vh; display: flex; background: #fff; flex-direction: row; }
+        * { box-sizing: border-box; }
+        .reg-page { min-height: 100vh; display: flex; background: #fff; flex-direction: row; width: 100%; overflow-x: hidden; }
+
+        /* ── GENERIC RESPONSIVE FORM GRID ── */
+        .reg-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
 
         /* ── MOBILE HEADER (hidden on desktop) ── */
         .reg-mobile-header {
           display: none;
           flex-direction: column;
-          gap: 16px;
+          gap: 14px;
           background: linear-gradient(145deg, #3730A3 0%, #4F46E5 45%, #6D28D9 100%);
-          padding: 28px 24px 24px;
+          padding: 24px 20px 20px;
+        }
+
+        .reg-mobile-trial-banner {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+        .reg-mobile-trial-banner p {
+          font-size: 12px;
+          line-height: 1.5;
+          color: rgba(255,255,255,0.9);
+          margin: 0;
         }
 
         .reg-mobile-features {
@@ -480,7 +502,7 @@ export default function Register() {
           z-index: 2;
           display: flex;
           flex-direction: column;
-          gap: 32px;
+          gap: 28px;
           width: 100%;
         }
 
@@ -500,6 +522,22 @@ export default function Register() {
           max-width: 340px;
         }
 
+        .reg-trial-banner {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 10px;
+          padding: 12px 14px;
+        }
+        .reg-trial-banner p {
+          font-size: 13px;
+          line-height: 1.55;
+          color: rgba(255,255,255,0.85);
+          margin: 0;
+        }
+
         .reg-features {
           display: flex;
           flex-direction: column;
@@ -514,6 +552,7 @@ export default function Register() {
         }
 
         @keyframes fadein { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .reg-feature-dot {
           width: 6px; height: 6px;
@@ -539,6 +578,7 @@ export default function Register() {
           padding: 11px 16px;
           transition: background 0.18s, border-color 0.18s;
           width: fit-content;
+          max-width: 100%;
           margin-top: 8px;
         }
 
@@ -575,6 +615,7 @@ export default function Register() {
           align-items: center;
           justify-content: center;
           padding: 40px 24px;
+          width: 100%;
         }
 
         .reg-form-inner {
@@ -652,16 +693,22 @@ export default function Register() {
           color: #D1D5DB;
         }
 
-        /* ── MOBILE ── */
+        /* ── TABLET / MOBILE ── */
         @media (max-width: 900px) {
           .reg-page { flex-direction: column; }
           .reg-brand { display: none; }
           .reg-mobile-header { display: flex; }
-          .reg-form-panel { padding-top: 32px; align-items: flex-start; }
+          .reg-form-panel { padding-top: 28px; align-items: flex-start; }
+        }
+
+        @media (max-width: 640px) {
+          .reg-grid-2 { grid-template-columns: 1fr; gap: 14px; }
         }
 
         @media (max-width: 480px) {
-          .reg-form-panel { padding: 24px 16px 28px; }
+          .reg-form-panel { padding: 20px 16px 28px; }
+          .reg-mobile-header { padding: 20px 16px 18px; }
+          .reg-nav-buttons { flex-direction: column-reverse; }
         }
       `}</style>
 
@@ -676,10 +723,18 @@ export default function Register() {
                 MinistryOS
               </h1>
               <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', margin: 0 }}>
-                30-day free trial · No credit card
+                1-month free trial · No credit card
               </p>
             </div>
           </div>
+
+          <div className="reg-mobile-trial-banner">
+            <CheckCircle size={14} color="rgba(255,255,255,0.85)" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <p>
+              <strong>1-month free trial</strong> with <strong>200 free SMS credits</strong> included. Trial expires after 30 days — upgrade anytime to keep going.
+            </p>
+          </div>
+
           <div className="reg-mobile-features">
             {[
               'Member management',
@@ -708,9 +763,15 @@ export default function Register() {
               </p>
             </div>
 
+            <div className="reg-trial-banner">
+              <CheckCircle size={16} color="#fff" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <p>
+                Start with a <strong>1-month free trial</strong> and <strong>200 free SMS credits</strong> — no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
+              </p>
+            </div>
+
             <div className="reg-features">
               {[
-                'Free 30-day trial — no credit card',
                 'Full member management system',
                 'Attendance & offering tracking',
                 'Smart automations & alerts',
@@ -725,11 +786,11 @@ export default function Register() {
 
             <a href="/learn-more" className="reg-learn-cta">
               <div className="reg-learn-play">
-                <Play size={13} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
+                <ArrowRight size={14} color="#4F46E5" />
               </div>
               <div className="reg-learn-cta-text">
-                <p>See MinistryOS in action</p>
-                <p>Watch the demo · Tour all features</p>
+                <p>Learn More</p>
+                <p>See features, pricing & how it works</p>
               </div>
               <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.4)' }} />
             </a>
