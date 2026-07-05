@@ -48,13 +48,16 @@ const QUICK_NAV = [
 ]
 
 /* ── BROWSER FRAME ───────────────────────────────────────────────────────── */
-function BrowserFrame({ src, alt }) {
+function BrowserFrame({ src, alt, onZoom }) {
   return (
-    <div style={{
-      borderRadius: 12, overflow: 'hidden',
-      boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
-      border: '1px solid #E5E7EB', background: '#fff',
-    }}>
+    <div
+      className="lmr-bf lmr-reveal"
+      onClick={() => onZoom && onZoom(src)}
+      style={{
+        borderRadius: 12, overflow: 'hidden', cursor: onZoom ? 'zoom-in' : 'default',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
+        border: '1px solid #E5E7EB', background: '#fff',
+      }}>
       <div style={{
         height: 36, background: '#F3F4F6',
         borderBottom: '1px solid #E5E7EB',
@@ -79,12 +82,12 @@ function BrowserFrame({ src, alt }) {
 }
 
 /* ── FEATURE ROW ─────────────────────────────────────────────────────────── */
-function FeatureRow({ id, eyebrow, title, body, bullets, img, alt, reverse, accent, bg }) {
+function FeatureRow({ id, eyebrow, title, body, bullets, img, alt, reverse, accent, bg, onZoom }) {
   return (
     <section id={id} style={{ background: bg, padding: '72px 20px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div className={`fr-grid${reverse ? ' fr-rev' : ''}`}>
-          <div className="fr-text">
+          <div className="fr-text lmr-reveal">
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: accent, margin: '0 0 12px' }}>
               {eyebrow}
             </p>
@@ -107,8 +110,8 @@ function FeatureRow({ id, eyebrow, title, body, bullets, img, alt, reverse, acce
               ))}
             </ul>
           </div>
-          <div className="fr-screen">
-            <BrowserFrame src={img} alt={alt} />
+          <div className="fr-screen lmr-reveal">
+            <BrowserFrame src={img} alt={alt} onZoom={onZoom} />
           </div>
         </div>
       </div>
@@ -118,9 +121,10 @@ function FeatureRow({ id, eyebrow, title, body, bullets, img, alt, reverse, acce
 
 /* ── MAIN ────────────────────────────────────────────────────────────────── */
 export default function LearnMore() {
-  const [scrolled,  setScrolled]  = useState(false)
-  const [memberTab, setMemberTab] = useState('overview')
-  const [showVideo, setShowVideo] = useState(false)
+  const [scrolled,    setScrolled]    = useState(false)
+  const [memberTab,   setMemberTab]   = useState('overview')
+  const [showVideo,   setShowVideo]   = useState(false)
+  const [lightboxSrc, setLightboxSrc] = useState(null)
 
   useEffect(() => {
     // Some browsers restore the previous scroll position on load/navigation.
@@ -137,6 +141,28 @@ export default function LearnMore() {
     window.addEventListener('scroll', fn)
     return () => window.removeEventListener('scroll', fn)
   }, [])
+
+  // Scroll-reveal: fade/slide in any element tagged .lmr-reveal once it
+  // enters the viewport. Runs after every render so newly-mounted elements
+  // (e.g. after switching member tabs) get observed too.
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('lmr-in')
+          observer.unobserve(entry.target)
+        }
+      })
+    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' })
+    document.querySelectorAll('.lmr-reveal').forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  })
+
+  // Lock background scroll while the lightbox is open
+  useEffect(() => {
+    document.body.style.overflow = lightboxSrc ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [lightboxSrc])
 
   const scrollTo = (id) => {
     const el = document.getElementById(id)
@@ -223,7 +249,8 @@ export default function LearnMore() {
 
         /* ── DASHBOARD SHOWCASE ── */
         .lmr-dash-show { background: linear-gradient(180deg,#1E1B4B 0%,#312E81 100%); padding: 0 20px 56px; }
-        .lmr-dash-frame { max-width: 1000px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08); }
+        .lmr-dash-frame { max-width: 1000px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08); cursor: zoom-in; transition: transform .25s ease, box-shadow .25s ease; }
+        .lmr-dash-frame:hover { transform: translateY(-4px); box-shadow: 0 48px 120px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12); }
         .lmr-dash-chrome { height: 36px; background: #1F2937; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; padding: 0 14px; gap: 6px; }
         .lmr-dash-dot { width: 10px; height: 10px; border-radius: 50%; }
         .lmr-dash-url { flex: 1; margin: 0 10px; background: rgba(255,255,255,.05); border-radius: 4px; height: 20px; display: flex; align-items: center; padding: 0 10px; }
@@ -317,6 +344,25 @@ export default function LearnMore() {
         .lmr-h2 { font-size: clamp(24px,3vw,42px); font-weight: 900; color: #111827; letter-spacing: -0.8px; line-height: 1.1; margin-bottom: 14px; }
         .lmr-body { font-size: 15px; color: #6B7280; line-height: 1.75; }
 
+        /* ── HOVER LIFT ON SCREENSHOTS ── */
+        .lmr-bf { transition: transform .25s ease, box-shadow .25s ease; }
+        .lmr-bf:hover { transform: translateY(-4px) scale(1.012); box-shadow: 0 28px 70px rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.08); }
+
+        /* ── SCROLL REVEAL ── */
+        .lmr-reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+        .lmr-reveal.lmr-in { opacity: 1; transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+          .lmr-reveal { opacity: 1; transform: none; transition: none; }
+        }
+
+        /* ── LIGHTBOX (tap/click to zoom any screenshot) ── */
+        .lmr-lightbox { position: fixed; inset: 0; z-index: 500; background: rgba(15,15,25,.92); display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; animation: lmr-fade-in .2s ease; }
+        @keyframes lmr-fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .lmr-lightbox img { max-width: 96vw; max-height: 92vh; width: auto; height: auto; border-radius: 10px; box-shadow: 0 30px 90px rgba(0,0,0,.5); cursor: default; touch-action: pinch-zoom; }
+        .lmr-lightbox-close { position: absolute; top: 20px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .lmr-lightbox-close:hover { background: rgba(255,255,255,.2); }
+        .lmr-lightbox-hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.5); font-size: 12px; font-weight: 500; }
+
         /* ══════════════════════════════════════
            RESPONSIVE — TABLET (≤900px)
         ══════════════════════════════════════ */
@@ -378,15 +424,22 @@ export default function LearnMore() {
 
           .lmr-dash-show { padding: 0 12px 40px; }
 
-          /* On small screens cap the browser frame image height so it doesn't dwarf the screen */
-          .lmr-dash-frame img { max-height: 280px; }
+          /* On small screens, cap the browser frame image height so it doesn't
+             dwarf the screen — raised from 280px so it's actually legible,
+             and it's tappable to zoom in further anyway. */
+          .lmr-dash-frame img { max-height: 400px; }
           .lmr-demo-wrap { margin-top: 20px; }
 
           /* Feature section paddings */
           section { padding-top: 48px !important; padding-bottom: 48px !important; padding-left: 16px !important; padding-right: 16px !important; }
 
-          /* Browser frame images: cap height on mobile so they don't scroll forever */
-          .lmr-bf-img { max-height: 340px !important; }
+          /* Browser frame images: cap height on mobile so they don't scroll
+             forever, but raised from 340px → 480px for legibility. Zoom
+             (lightbox) handles anyone who wants to see more detail. */
+          .lmr-bf-img { max-height: 480px !important; }
+
+          /* No hover lift on touch devices — avoids a "stuck" hover state */
+          .lmr-bf:hover, .lmr-dash-frame:hover { transform: none; box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06); }
 
           /* Stats strip */
           .lmr-stats { padding: 32px 16px; }
@@ -411,6 +464,9 @@ export default function LearnMore() {
           .lmr-set-g { grid-template-columns: 1fr; gap: 32px; margin-top: 28px; }
 
           .lmr section[id], .lmr div[id] { scroll-margin-top: 88px; }
+
+          /* Lightbox fills the whole screen on mobile, no rounded corners */
+          .lmr-lightbox img { max-width: 100vw; max-height: 100vh; border-radius: 0; }
         }
       `}</style>
 
@@ -470,7 +526,7 @@ export default function LearnMore() {
 
         {/* ── DASHBOARD SCREENSHOT ── */}
         <div className="lmr-dash-show" id="dashboard">
-          <div className="lmr-dash-frame">
+          <div className="lmr-dash-frame" onClick={() => setLightboxSrc(IMG.dashboard)}>
             <div className="lmr-dash-chrome">
               <div className="lmr-dash-dot" style={{ background: '#FC5858' }} />
               <div className="lmr-dash-dot" style={{ background: '#FCBA58' }} />
@@ -531,6 +587,7 @@ export default function LearnMore() {
           alt="Members Directory"
           accent="#4F46E5"
           bg="#fff"
+          onZoom={setLightboxSrc}
         />
 
         <div className="lmr-div" />
@@ -539,7 +596,7 @@ export default function LearnMore() {
         <section id="profiles" style={{ background: '#F8F7FF', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid fr-rev">
-              <div className="fr-text">
+              <div className="fr-text lmr-reveal">
                 <p className="lmr-eyebrow" style={{ color: '#4F46E5', margin: '0 0 12px' }}>02 · Member Profiles</p>
                 <h2 className="lmr-h2">Three views of every person.</h2>
                 <p className="lmr-body" style={{ marginBottom: 20 }}>
@@ -571,8 +628,8 @@ export default function LearnMore() {
                   ))}
                 </ul>
               </div>
-              <div className="fr-screen">
-                <BrowserFrame src={mt.src} alt="Member Profile" />
+              <div className="fr-screen lmr-reveal">
+                <BrowserFrame src={mt.src} alt="Member Profile" onZoom={setLightboxSrc} />
               </div>
             </div>
           </div>
@@ -596,6 +653,7 @@ export default function LearnMore() {
           alt="Quick Check-in"
           accent="#059669"
           bg="#fff"
+          onZoom={setLightboxSrc}
         />
 
         <div className="lmr-div" />
@@ -610,7 +668,7 @@ export default function LearnMore() {
             <p className="lmr-body" style={{ marginBottom: 28, maxWidth: 500, margin: '0 auto 28px' }}>
               Service Type, Custom Name, Date, Time — that's all you need. Hit "Create Service" and you're ready to start marking attendance.
             </p>
-            <BrowserFrame src={IMG.attendCreate} alt="Create New Service" />
+            <BrowserFrame src={IMG.attendCreate} alt="Create New Service" onZoom={setLightboxSrc} />
           </div>
         </section>
 
@@ -633,6 +691,7 @@ export default function LearnMore() {
           accent="#7C3AED"
           bg="#fff"
           reverse
+          onZoom={setLightboxSrc}
         />
 
         <div className="lmr-div" />
@@ -653,6 +712,7 @@ export default function LearnMore() {
           alt="Communications"
           accent="#EC4899"
           bg="#F8F7FF"
+          onZoom={setLightboxSrc}
         />
 
         <div className="lmr-div" />
@@ -661,7 +721,7 @@ export default function LearnMore() {
         <section id="automations" style={{ background: '#fff', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid fr-rev">
-              <div className="fr-text">
+              <div className="fr-text lmr-reveal">
                 <p className="lmr-eyebrow" style={{ color: '#D97706', margin: '0 0 12px' }}>06 · Smart Automations</p>
                 <h2 className="lmr-h2">Set it once. It runs itself.</h2>
                 <p className="lmr-body" style={{ marginBottom: 24 }}>
@@ -686,9 +746,9 @@ export default function LearnMore() {
                   ))}
                 </ul>
               </div>
-              <div className="fr-screen" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <BrowserFrame src={IMG.automation1} alt="Automations Overview" />
-                <BrowserFrame src={IMG.automation2} alt="Automations List" />
+              <div className="fr-screen lmr-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <BrowserFrame src={IMG.automation1} alt="Automations Overview" onZoom={setLightboxSrc} />
+                <BrowserFrame src={IMG.automation2} alt="Automations List" onZoom={setLightboxSrc} />
               </div>
             </div>
           </div>
@@ -700,7 +760,7 @@ export default function LearnMore() {
         <section id="reports" style={{ background: '#fff', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid">
-              <div className="fr-text">
+              <div className="fr-text lmr-reveal">
                 <p className="lmr-eyebrow" style={{ color: '#0891B2', margin: '0 0 12px' }}>07 · Reports & Analytics</p>
 
                 <h2 className="lmr-h2">See your church's health clearly.</h2>
@@ -726,9 +786,9 @@ export default function LearnMore() {
                   ))}
                 </ul>
               </div>
-              <div className="fr-screen" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <BrowserFrame src={IMG.reportsFinance} alt="Finance Report" />
-                <BrowserFrame src={IMG.reportsAttend}  alt="Attendance Report" />
+              <div className="fr-screen lmr-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <BrowserFrame src={IMG.reportsFinance} alt="Finance Report" onZoom={setLightboxSrc} />
+                <BrowserFrame src={IMG.reportsAttend}  alt="Attendance Report" onZoom={setLightboxSrc} />
               </div>
             </div>
           </div>
@@ -772,9 +832,9 @@ export default function LearnMore() {
                   caption: 'Name, email, role, temporary password — done. They log in and start working immediately.',
                 },
               ].map(({ label, src, alt, caption }) => (
-                <div key={label}>
+                <div key={label} className="lmr-reveal">
                   <p className="lmr-set-label">{label}</p>
-                  <BrowserFrame src={src} alt={alt} />
+                  <BrowserFrame src={src} alt={alt} onZoom={setLightboxSrc} />
                   <p className="lmr-set-caption">{caption}</p>
                 </div>
               ))}
@@ -786,7 +846,7 @@ export default function LearnMore() {
         <section style={{ background: '#1E1B4B', padding: '64px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid">
-              <div className="fr-text" style={{ color: '#fff' }}>
+              <div className="fr-text lmr-reveal" style={{ color: '#fff' }}>
                 <p className="lmr-eyebrow" style={{ color: '#A5B4FC', marginBottom: 12 }}>Multi-branch</p>
                 <h2 style={{ fontSize: 'clamp(22px,3vw,34px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-.6px', margin: '0 0 14px', color: '#fff' }}>
                   One church, multiple branches — one login.
@@ -809,8 +869,8 @@ export default function LearnMore() {
                   </div>
                 ))}
               </div>
-              <div className="fr-screen">
-                <BrowserFrame src={IMG.dashBranch} alt="Branch Switcher" />
+              <div className="fr-screen lmr-reveal">
+                <BrowserFrame src={IMG.dashBranch} alt="Branch Switcher" onZoom={setLightboxSrc} />
               </div>
             </div>
           </div>
@@ -820,7 +880,7 @@ export default function LearnMore() {
         <section style={{ background: '#F8F7FF', padding: '72px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <div className="fr-grid">
-              <div className="fr-text">
+              <div className="fr-text lmr-reveal">
                 <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>09 · Global Search</p>
                 <h2 className="lmr-h2">Find anything, instantly.</h2>
                 <p className="lmr-body" style={{ marginBottom: 22 }}>
@@ -839,8 +899,8 @@ export default function LearnMore() {
                   </div>
                 ))}
               </div>
-              <div className="fr-screen">
-                <BrowserFrame src={IMG.globalSearch} alt="Global Search" />
+              <div className="fr-screen lmr-reveal">
+                <BrowserFrame src={IMG.globalSearch} alt="Global Search" onZoom={setLightboxSrc} />
               </div>
             </div>
           </div>
@@ -849,7 +909,7 @@ export default function LearnMore() {
         {/* ── PRICING ── */}
         <section id="pricing" style={{ background: '#fff', padding: '80px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ textAlign: 'center', marginBottom: 48 }} className="lmr-reveal">
               <p className="lmr-eyebrow" style={{ color: '#4F46E5', marginBottom: 12 }}>Transparent pricing</p>
               <h2 className="lmr-h2" style={{ textAlign: 'center' }}>Plans that grow with your church.</h2>
               <p className="lmr-body" style={{ maxWidth: 440, margin: '0 auto' }}>
@@ -857,7 +917,11 @@ export default function LearnMore() {
               </p>
             </div>
 
-            <div style={{ maxWidth: 900, margin: '0 auto 40px', borderRadius: 14, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.1)', border: '1px solid #E5E7EB' }}>
+            <div
+              className="lmr-bf lmr-reveal"
+              onClick={() => setLightboxSrc(IMG.billingPlans)}
+              style={{ maxWidth: 900, margin: '0 auto 40px', borderRadius: 14, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.1)', border: '1px solid #E5E7EB', cursor: 'zoom-in' }}
+            >
               <img src={IMG.billingPlans} alt="MinistryOS Pricing Plans" style={{ width: '100%', display: 'block' }} />
             </div>
 
@@ -878,7 +942,7 @@ export default function LearnMore() {
                   feats: ['Unlimited members','Unlimited staff accounts','5 branches','2,000 SMS credits / month'],
                 },
               ].map(({ name, price, color, badge, badgeBg, feats }) => (
-                <div key={name} className="lmr-plan" style={{ borderColor: badge ? color : '#E5E7EB' }}>
+                <div key={name} className="lmr-plan lmr-reveal" style={{ borderColor: badge ? color : '#E5E7EB' }}>
                   {badge && <div className="lmr-plan-badge" style={{ background: badgeBg }}>{badge}</div>}
                   <div className="lmr-plan-name">{name}</div>
                   <div className="lmr-plan-price" style={{ color }}>{price}</div>
@@ -895,11 +959,19 @@ export default function LearnMore() {
               ))}
             </div>
 
-            <div style={{ maxWidth: 900, margin: '40px auto 0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,.07)', border: '1px solid #EDE9FE' }}>
+            <div
+              className="lmr-reveal"
+              style={{ maxWidth: 900, margin: '40px auto 0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,.07)', border: '1px solid #EDE9FE' }}
+            >
               <div style={{ background: '#F8F7FF', padding: '12px 18px', borderBottom: '1px solid #EDE9FE' }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#4F46E5' }}>📱 Need more SMS? Buy top-up bundles anytime — 500 for GHS 40, 1,000 for GHS 75, 5,000 for GHS 320.</p>
               </div>
-              <img src={IMG.billingSms} alt="SMS Credits" style={{ width: '100%', display: 'block' }} />
+              <img
+                src={IMG.billingSms}
+                alt="SMS Credits"
+                onClick={() => setLightboxSrc(IMG.billingSms)}
+                style={{ width: '100%', display: 'block', cursor: 'zoom-in' }}
+              />
             </div>
           </div>
         </section>
@@ -907,7 +979,7 @@ export default function LearnMore() {
         {/* ── WHY MINISTRYOS ── */}
         <section style={{ background: '#F8F7FF', padding: '80px 20px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ textAlign: 'center', marginBottom: 48 }} className="lmr-reveal">
               <p className="lmr-eyebrow" style={{ color: '#4F46E5', marginBottom: 12 }}>Why MinistryOS</p>
               <h2 className="lmr-h2" style={{ textAlign: 'center' }}>Built for modern churches worldwide.</h2>
             </div>
@@ -920,7 +992,7 @@ export default function LearnMore() {
                 { icon: '🤖', bg: '#E0F2FE', title: 'Automations that save hours', body: 'Birthday wishes, welcome messages, absence follow-ups — set them once and they run themselves. Your members feel cared for even when you\'re busy.' },
                 { icon: '📊', bg: '#FDF2F8', title: 'Reports your board will love', body: 'Export a full attendance and finance report to PDF with one click. Come to every board meeting with real numbers — not estimates from memory.' },
               ].map(({ icon, bg, title, body }) => (
-                <div key={title} className="lmr-why-card">
+                <div key={title} className="lmr-why-card lmr-reveal">
                   <div style={{ background: bg, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 22 }}>
                     {icon}
                   </div>
@@ -934,7 +1006,7 @@ export default function LearnMore() {
 
         {/* ── TESTIMONIALS ── */}
         <section className="lmr-testi-sec">
-          <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }} className="lmr-reveal">
             <p className="lmr-eyebrow" style={{ color: '#A5B4FC', marginBottom: 12 }}>
               From pastors & admins using MinistryOS
             </p>
@@ -948,7 +1020,7 @@ export default function LearnMore() {
               { q: 'The MoMo giving feature changed everything. Pledges are up because members can now track their own commitments and feel accountable.', name: 'Mrs. Abena Mensah',   role: 'Church Administrator, Kumasi', init: 'AM', color: '#059669' },
               { q: 'We activated the birthday automation and members started calling to say thank you. It costs us nothing and it means everything to them.', name: 'Elder Kwame Boateng', role: 'Church Leader, Takoradi',       init: 'KB', color: '#D97706' },
             ].map(({ q, name, role, init, color }) => (
-              <div key={name} className="lmr-testi-card">
+              <div key={name} className="lmr-testi-card lmr-reveal">
                 <p className="lmr-testi-q">"{q}"</p>
                 <div className="lmr-testi-p">
                   <div className="lmr-testi-av" style={{ background: color }}>{init}</div>
@@ -964,7 +1036,7 @@ export default function LearnMore() {
 
         {/* ── FINAL CTA ── */}
         <section className="lmr-cta">
-          <div className="lmr-cta-in">
+          <div className="lmr-cta-in lmr-reveal">
             <p className="lmr-eyebrow" style={{ color: '#4F46E5', textAlign: 'center', marginBottom: 16 }}>Ready to start?</p>
             <h2 className="lmr-cta-h2">
               Your church runs on people.<br />
@@ -993,6 +1065,16 @@ export default function LearnMore() {
         </footer>
 
       </div>
+
+      {/* ── LIGHTBOX: click/tap any screenshot to view it full-size.
+           On mobile this fills the screen and supports native pinch-zoom. ── */}
+      {lightboxSrc && (
+        <div className="lmr-lightbox" onClick={() => setLightboxSrc(null)}>
+          <button className="lmr-lightbox-close" onClick={() => setLightboxSrc(null)}>✕</button>
+          <img src={lightboxSrc} alt="Zoomed view" onClick={(e) => e.stopPropagation()} />
+          <span className="lmr-lightbox-hint">Tap anywhere to close</span>
+        </div>
+      )}
     </>
   )
 }
