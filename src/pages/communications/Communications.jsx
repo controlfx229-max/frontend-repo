@@ -57,6 +57,10 @@ const timeAgo = (date) => {
 
 const SMS_LIMIT = 160
 
+// Polling config for post-send status confirmation
+const POLL_INTERVAL_MS = 2500
+const POLL_MAX_ATTEMPTS = 24   // ~1 minute of polling before we give up and point to History
+
 // ─── TEMPLATE FORM ────────────────────────────
 function TemplateForm({ api, editing, onSuccess, onClose }) {
   const [loading, setLoading] = useState(false)
@@ -134,9 +138,10 @@ function ComposeTab({ api, branchReady }) {
   const [templates, setTemplates]     = useState([])
   const [preview, setPreview]         = useState(null)   // { count, names[] }
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [loading, setLoading]         = useState(false)
+  const [loading, setLoading]         = useState(false)   // true only while the initial POST /send is in flight
+  const [sendState, setSendState]     = useState(null)    // 'queued' | 'sending' | 'sent' | 'failed' | 'partial' | 'timeout' | null
+  const [sendSummary, setSendSummary] = useState(null)    // { totalRecipients, totalSent, totalFailed }
   const [error, setError]             = useState('')
-  const [success, setSuccess]         = useState('')
   const [form, setForm] = useState({
     type:         'sms',
     body:         '',
@@ -148,6 +153,9 @@ function ComposeTab({ api, branchReady }) {
 
   // Debounce ref so preview doesn't fire on every keystroke
   const previewTimer = useRef(null)
+  // Polling refs so we can cancel if the component unmounts or a new send starts
+  const pollTimer     = useRef(null)
+  const pollAttempts  = useRef(0)
 
   useEffect(() => {
     if (!branchReady) return
@@ -161,6 +169,11 @@ function ComposeTab({ api, branchReady }) {
       if (t.success) setTemplates(t.templates)
     }).catch(console.error)
   }, [api, branchReady])
+
+  // Clean up any in-flight poll on unmount
+  useEffect(() => {
+    return () => clearTimeout(pollTimer.current)
+  }, [])
 
   // Build audience object from current form state
   const buildAudience = (f = form) => ({
@@ -201,17 +214,63 @@ function ComposeTab({ api, branchReady }) {
     previewTimer.current = setTimeout(() => refreshPreview(next), 400)
   }
 
+  // Poll GET /communications/:id until the backend flips status away from
+  // 'sending', so the toast can show a real outcome instead of the initial
+  // "Sending to X recipients..." message hanging forever.
+  const pollMessageStatus = useCallback((messageId) => {
+    clearTimeout(pollTimer.current)
+    pollAttempts.current = 0
+
+    const tick = async () => {
+      pollAttempts.current += 1
+      try {
+        const data = await api(`/communications/${messageId}`)
+        const msg  = data?.message
+        if (data.success && msg) {
+          if (msg.status === 'sent' || msg.status === 'failed') {
+            const totalSent   = msg.totalSent   ?? 0
+            const totalFailed = msg.totalFailed ?? 0
+            setSendSummary({ totalRecipients: msg.totalRecipients, totalSent, totalFailed })
+            setSendState(totalFailed > 0 && totalSent > 0 ? 'partial' : msg.status)
+            return // stop polling — done
+          }
+        }
+      } catch {
+        // transient network error — just try again next tick
+      }
+
+      if (pollAttempts.current >= POLL_MAX_ATTEMPTS) {
+        setSendState('timeout')
+        return
+      }
+      pollTimer.current = setTimeout(tick, POLL_INTERVAL_MS)
+    }
+
+    pollTimer.current = setTimeout(tick, POLL_INTERVAL_MS)
+  }, [api])
+
   const handleSend = async () => {
     if (!form.body.trim()) { setError('Message body is required.'); return }
     setLoading(true)
     setError('')
+    setSendState(null)
+    setSendSummary(null)
+    clearTimeout(pollTimer.current)
     try {
       const data = await api('/communications/send', {
         method: 'POST',
         body: JSON.stringify({ type: form.type, body: form.body, audience: buildAudience() })
       })
       if (!data.success) { setError(data.message); return }
-      setSuccess(data.message || 'Message sent successfully.')
+
+      // Scheduled messages resolve immediately — no polling needed
+      if (data.data?.status === 'scheduled') {
+        setSendState('scheduled')
+      } else {
+        setSendState('sending')
+        pollMessageStatus(data.data._id)
+      }
+
       setForm(f => ({ ...f, body: '' }))
       setPreview(null)
     } catch { setError('Cannot connect to server.') }
@@ -224,10 +283,81 @@ function ComposeTab({ api, branchReady }) {
       ? `${preview.count} recipient${preview.count === 1 ? '' : 's'} will receive this message`
       : null
 
+  // Renders the post-send status banner (replaces the old static success toast)
+  const renderSendStatus = () => {
+    if (!sendState) return null
+
+    if (sendState === 'scheduled') {
+      return (
+        <div className="success-toast"><CheckCircle size={16} /> Message scheduled successfully.</div>
+      )
+    }
+
+    if (sendState === 'sending') {
+      return (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+          padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)',
+          background: '#DBEAFE', color: '#1E40AF', fontSize: 'var(--text-sm)', fontWeight: 600
+        }}>
+          <span className="spinner" aria-hidden="true" style={{
+            width: 14, height: 14, borderRadius: '50%',
+            border: '2px solid #1E40AF', borderTopColor: 'transparent',
+            display: 'inline-block', animation: 'spin 0.8s linear infinite'
+          }} />
+          Sending… this updates automatically once delivery finishes.
+        </div>
+      )
+    }
+
+    if (sendState === 'sent') {
+      return (
+        <div className="success-toast">
+          <CheckCircle size={16} /> Delivered to all {sendSummary?.totalSent ?? sendSummary?.totalRecipients} recipient{(sendSummary?.totalSent ?? 0) === 1 ? '' : 's'}.
+        </div>
+      )
+    }
+
+    if (sendState === 'partial') {
+      return (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+          padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)',
+          background: '#FEF3C7', color: '#92400E', fontSize: 'var(--text-sm)', fontWeight: 600
+        }}>
+          <AlertCircle size={16} />
+          Sent to {sendSummary?.totalSent} of {sendSummary?.totalRecipients} — {sendSummary?.totalFailed} failed. Check History for details.
+        </div>
+      )
+    }
+
+    if (sendState === 'failed') {
+      return (
+        <div className="form-error">
+          <AlertCircle size={14} /> Sending failed for all recipients. Check History for details.
+        </div>
+      )
+    }
+
+    if (sendState === 'timeout') {
+      return (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+          padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)',
+          background: '#F1F5F9', color: '#64748B', fontSize: 'var(--text-sm)', fontWeight: 600
+        }}>
+          <Clock size={14} /> Still processing in the background — check the History tab shortly for the final status.
+        </div>
+      )
+    }
+
+    return null
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      {error   && <div className="form-error"><AlertCircle size={14} /> {error}</div>}
-      {success && <div className="success-toast"><CheckCircle size={16} /> {success}</div>}
+      {error && <div className="form-error"><AlertCircle size={14} /> {error}</div>}
+      {renderSendStatus()}
 
       {/* Audience */}
       <div className="form-section">
@@ -330,9 +460,11 @@ function ComposeTab({ api, branchReady }) {
       </div>
 
       <button className="btn-primary" onClick={handleSend}
-        disabled={loading || !form.body.trim() || (preview != null && preview.count === 0)}>
+        disabled={loading || sendState === 'sending' || !form.body.trim() || (preview != null && preview.count === 0)}>
         <Send size={16} /> {loading ? 'Sending…' : `Send${preview?.count ? ` to ${preview.count} member${preview.count > 1 ? 's' : ''}` : ''}`}
       </button>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
