@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import useApi from '../../hooks/useApi'
 import {
   Plus, Calendar, Users, CheckCircle,
-  XCircle, Clock, AlertCircle
+  XCircle, Clock, AlertCircle, ClipboardList, Phone
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
@@ -317,6 +317,125 @@ function QuickCheckIn({ members, attendance, onMark, serviceId, onAddMember }) {
   )
 }
 
+// ─── ATTENDANCE SUMMARY (Present/Absent follow-up list) ──
+// Shown after saving attendance (or on demand via "View Summary").
+// Groups members by department + cell group so staff can plan follow-up calls/visits.
+function AttendanceSummary({ service, members, attendance, onClose, onDone }) {
+  const present = members.filter(m => attendance[String(m._id)] === 'present')
+  const absent  = members.filter(m => attendance[String(m._id)] !== 'present')
+
+  const memberSubtitle = (m) => {
+    const parts = []
+    if (m.departmentId?.name) parts.push(m.departmentId.name)
+    if (m.cellGroupId?.name)  parts.push(m.cellGroupId.name)
+    if (m.phone)              parts.push(m.phone)
+    return parts.join(' · ') || 'No department or cell group'
+  }
+
+  const renderRow = (m, variant) => (
+    <div key={m._id} style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 12px', borderBottom: '1px solid var(--border)'
+    }}>
+      <div style={{
+        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+        background: variant === 'present' ? 'var(--success-bg)' : '#FEE2E2',
+        color:      variant === 'present' ? 'var(--success)'    : 'var(--danger)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, fontSize: 13
+      }}>
+        {`${m.firstName[0]}${m.lastName[0]}`.toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>
+          {m.firstName} {m.lastName}
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+          {memberSubtitle(m)}
+        </p>
+      </div>
+      {variant === 'absent' && m.phone && (
+        <a
+          href={`https://wa.me/${m.phone.replace(/\D/g, '')}`}
+          target="_blank" rel="noopener noreferrer"
+          title="Message on WhatsApp"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+            background: 'var(--surface-2)', color: 'var(--success)'
+          }}
+        >
+          <Phone size={15} />
+        </a>
+      )}
+    </div>
+  )
+
+  return (
+    <div>
+      <div className="attendance-service-info" style={{ marginBottom: '1rem' }}>
+        <div>
+          <p className="attendance-service-name">{service.name}</p>
+          <p className="attendance-service-date">
+            {new Date(service.date).toLocaleDateString('en-GH', {
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+            })} · {service.time}
+          </p>
+        </div>
+        <div className="attendance-summary-pills">
+          <span className="attendance-pill present">
+            <CheckCircle size={13} /> {present.length} Present
+          </span>
+          <span className="attendance-pill absent">
+            <XCircle size={13} /> {absent.length} Absent
+          </span>
+        </div>
+      </div>
+
+      {/* Absent list first — this is the follow-up action list */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <XCircle size={16} color="var(--danger)" />
+          <h4 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>
+            Absent — for follow-up ({absent.length})
+          </h4>
+        </div>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          {absent.length === 0 ? (
+            <p style={{ padding: '1rem', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+              Everyone was present. 🎉
+            </p>
+          ) : absent.map(m => renderRow(m, 'absent'))}
+        </div>
+      </div>
+
+      {/* Present list */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <CheckCircle size={16} color="var(--success)" />
+          <h4 style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>
+            Present ({present.length})
+          </h4>
+        </div>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          {present.length === 0 ? (
+            <p style={{ padding: '1rem', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+              No one marked present yet.
+            </p>
+          ) : present.map(m => renderRow(m, 'present'))}
+        </div>
+      </div>
+
+      <div className="form-actions">
+        <button className="btn-outline" onClick={onClose}>Back to List</button>
+        {onDone && (
+          <button className="btn-primary" onClick={onDone}>Done</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── TAKE ATTENDANCE MODAL ───────────────────
 /*
  * ATTENDANCE LOGIC — CRITICAL RULES:
@@ -327,6 +446,10 @@ function QuickCheckIn({ members, attendance, onMark, serviceId, onAddMember }) {
  * 4. "Mark All Present/Absent" only affects the current view state — not auto-saved.
  * 5. Save calls /attendance/mark which does upsert (create or update).
  *    This prevents duplicate records on re-save.
+ *
+ * After a successful save, the modal switches to a Present/Absent SUMMARY view
+ * (grouped by department + cell group) so staff can immediately see who needs
+ * follow-up, instead of the modal just closing silently.
  */
 function TakeAttendanceModal({ service, api, onClose, onSaved, onAddMember }) {
   const [members, setMembers]           = useState([])
@@ -337,6 +460,7 @@ function TakeAttendanceModal({ service, api, onClose, onSaved, onAddMember }) {
   const [loading, setLoading]           = useState(true)
   const [saving, setSaving]             = useState(false)
   const [error, setError]               = useState('')
+  const [view, setView]                 = useState('form') // 'form' | 'summary'
 
   // Fetch departments for the filter dropdown
   useEffect(() => {
@@ -433,12 +557,30 @@ function TakeAttendanceModal({ service, api, onClose, onSaved, onAddMember }) {
         body: JSON.stringify({ serviceId: service._id, records })
       })
       if (!data.success) { setError(data.message); return }
-      onSaved(data.message)
+      // Refresh the "saved" baseline so the summary/dot indicators reflect what
+      // was just persisted, then show the follow-up summary instead of closing.
+      setSavedRecords({ ...attendance })
+      setView('summary')
+      // Let the parent know saving succeeded (toast + refetch service list),
+      // but keep the modal itself open on the summary view.
+      onSaved(data.message, { keepOpen: true })
     } catch {
       setError('Failed to save attendance. Please try again.')
     } finally {
       setSaving(false)
     }
+  }
+
+  if (view === 'summary') {
+    return (
+      <AttendanceSummary
+        service={service}
+        members={members}
+        attendance={attendance}
+        onClose={() => setView('form')}
+        onDone={onClose}
+      />
+    )
   }
 
   return (
@@ -502,6 +644,12 @@ function TakeAttendanceModal({ service, api, onClose, onSaved, onAddMember }) {
         <button className="btn-outline" onClick={handleMarkAll} disabled={loading || members.length === 0}>
           {allArePresent ? 'Mark All Absent' : 'Mark All Present'}
         </button>
+        {isUpdateMode && members.length > 0 && (
+          <button className="btn-outline" onClick={() => setView('summary')}>
+            <ClipboardList size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
+            View Summary
+          </button>
+        )}
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
@@ -712,11 +860,14 @@ export default function Attendance() {
     setActiveService(service)
   }
 
-  const handleAttendanceSaved = (message) => {
-    setActiveService(null)
+  // options.keepOpen: when the save happens inside TakeAttendanceModal we want
+  // to show the follow-up summary rather than close the modal, so we just
+  // refresh the toast + service list here and let the modal manage its own view.
+  const handleAttendanceSaved = (message, options = {}) => {
     setSuccessMsg(message)
     fetchServices()
     setTimeout(() => setSuccessMsg(''), 4000)
+    if (!options.keepOpen) setActiveService(null)
   }
 
   const handleAddMember = (query) => {

@@ -50,12 +50,12 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
     nextOfKinRelation: editing?.nextOfKinRelation || '',
   })
 
-  // Filter cell groups to the chosen department
-  const filteredGroups = form.departmentId
-    ? cellGroups.filter(g =>
-        (g.departmentId?._id || g.departmentId) === form.departmentId
-      )
-    : cellGroups
+  // NOTE: Department and Cell Group are INDEPENDENT fields in this church's data model.
+  // A member can belong to a department, a cell group, both, or neither — cell groups
+  // are NOT scoped under departments (this org uses a single general cell group structure
+  // where individual cell groups are created underneath it, unrelated to departments).
+  // Do NOT filter cellGroups by the selected department, and do NOT clear one when the
+  // other changes.
 
   // Returns the CSS class for an input — adds 'input-error' if that field failed validation
   const inputClass = (field) =>
@@ -63,10 +63,7 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    const next = { ...form, [name]: type === 'checkbox' ? checked : value }
-    // If department changed, clear cell group so a stale group isn't sent
-    if (name === 'departmentId') next.cellGroupId = ''
-    setForm(next)
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
     // Clear the error for this specific field as soon as the user starts fixing it
     if (fieldErrors[name]) {
       setFieldErrors(prev => {
@@ -337,6 +334,9 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
       </div>
 
       {/* ══ SECTION: Church Information ══ */}
+      {/* Department and Cell Group are two independent, unrelated classifications.
+          A member can be assigned to either, both, or neither — selecting one
+          must never affect or filter the other. */}
       <div className="form-section">
         <p className="form-section-title">Church Information</p>
 
@@ -383,7 +383,7 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
               className="form-input"
             >
               <option value="">No cell group</option>
-              {filteredGroups.map(g => (
+              {cellGroups.map(g => (
                 <option key={g._id} value={g._id}>{g.name}</option>
               ))}
             </select>
@@ -496,7 +496,10 @@ export default function Members() {
   const [confirmArchive, setConfirmArchive] = useState(null)
   const [successMsg, setSuccessMsg]         = useState('')
 
-  // Load departments + cell groups once branch is ready
+  // Load departments + cell groups once branch is ready.
+  // NOTE: /departments/cellgroups is called with NO departmentId query param,
+  // so the backend (getCellGroups) returns the FULL unfiltered list of active
+  // cell groups for the branch — exactly what the independent-fields model needs.
   useEffect(() => {
     if (!branchReady) return
     const loadLookups = async () => {
