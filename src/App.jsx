@@ -56,6 +56,20 @@ function AppLoading() {
 }
 
 // ─────────────────────────────────────────────
+// Shared "where should a logged-in user go?" logic
+// Used by both SmartRedirect (catch-all) and
+// RedirectIfAuthed (public-only pages below).
+// ─────────────────────────────────────────────
+function resolveDestination(user) {
+  if (user.role === 'PLATFORM_OWNER') return '/admin-platform'
+
+  const status = user?.subscriptionStatus
+  if (status && !FULL_ACCESS_STATUSES.includes(status)) return '/billing'
+
+  return '/dashboard'
+}
+
+// ─────────────────────────────────────────────
 // GUARD: Requires authentication
 // Unauthenticated → /login
 // ─────────────────────────────────────────────
@@ -136,14 +150,32 @@ function RequireSubscription({ children }) {
 }
 
 // ─────────────────────────────────────────────
-// SMART REDIRECT
+// GUARD: Redirect already-logged-in users away
+// from public-only pages ("/", "/login", "/register")
+// straight to their dashboard/billing/admin.
+//
+// THIS IS THE FIX for "returning to the site
+// shows the landing/login page again instead of
+// going back into the app."
+// ─────────────────────────────────────────────
+function RedirectIfAuthed({ children }) {
+  const { user, token, loading } = useAuth()
+
+  if (loading) return <AppLoading />
+
+  if (token && user) {
+    return <Navigate to={resolveDestination(user)} replace />
+  }
+
+  return children
+}
+
+// ─────────────────────────────────────────────
+// SMART REDIRECT (catch-all only)
 // Sends logged-in users to the right place
 // based on role and subscription status.
-// For visitors who aren't logged in, this now
-// falls through to the public LearnMore landing
-// page instead of forcing a /login redirect —
-// LearnMore itself lives at "/" (see routes below),
-// so this only fires for genuinely unmatched paths.
+// For visitors who aren't logged in, falls
+// through to the public LearnMore landing page.
 // ─────────────────────────────────────────────
 function SmartRedirect() {
   const { user, token, loading } = useAuth()
@@ -152,18 +184,7 @@ function SmartRedirect() {
 
   if (!token || !user) return <Navigate to="/" replace />
 
-  if (user.role === 'PLATFORM_OWNER') {
-    return <Navigate to="/admin-platform" replace />
-  }
-
-  const status = user?.subscriptionStatus
-
-  // Only redirect to billing if status is explicitly non-active
-  if (status && !FULL_ACCESS_STATUSES.includes(status)) {
-    return <Navigate to="/billing" replace />
-  }
-
-  return <Navigate to="/dashboard" replace />
+  return <Navigate to={resolveDestination(user)} replace />
 }
 
 // ─────────────────────────────────────────────
@@ -174,14 +195,41 @@ function AppRoutes() {
     <Routes>
 
       {/* ── PUBLIC ────────────────────────────── */}
-      {/* LearnMore is now the landing page at "/".
-          "/learn-more" is kept as an alias so any
-          existing links, shares, or bookmarks
-          pointing there keep working unchanged. */}
-      <Route path="/"          element={<LearnMore />} />
+      {/* "/" is the landing page for visitors, but
+          if a logged-in user lands here (e.g. reopening
+          a bookmark/tab), RedirectIfAuthed sends them
+          straight back into the app instead of forcing
+          them to look at the marketing page again. */}
+      <Route
+        path="/"
+        element={
+          <RedirectIfAuthed>
+            <LearnMore />
+          </RedirectIfAuthed>
+        }
+      />
+      {/* "/learn-more" stays open to everyone, logged in
+          or not — it's the explicit "see features" link,
+          so it should always be viewable on request. */}
       <Route path="/learn-more" element={<LearnMore />} />
-      <Route path="/login"    element={<Login />} />
-      <Route path="/register" element={<Register />} />
+
+      <Route
+        path="/login"
+        element={
+          <RedirectIfAuthed>
+            <Login />
+          </RedirectIfAuthed>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <RedirectIfAuthed>
+            <Register />
+          </RedirectIfAuthed>
+        }
+      />
+
       <Route path="/forgot-password"  element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/2fa-setup"   element={<TwoFactorSetup />} />
