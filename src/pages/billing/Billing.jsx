@@ -11,7 +11,9 @@ const WHATSAPP_NUMBER = '233553951396'
 const formatGHS = (n) =>
   `GHS ${parseFloat(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
 
-// ── PLAN CONFIG ───────────────────────────────
+// ── PLAN CONFIG (monthly reference — yearly prices come from the
+//    backend's billing.yearlyPlans so pricing/discount logic lives
+//    in one place: billing.controller.js) ──────────────────────────
 const PLANS = [
   {
     id: 'starter',
@@ -48,6 +50,12 @@ const SMS_BUNDLES = [
   { key: '1000', credits: 1000, priceGHS: 75  },
   { key: '5000', credits: 5000, priceGHS: 320 },
 ]
+
+// Fallback yearly calc if the backend hasn't returned yearlyPlans yet
+// (e.g. billing status is still loading) — keeps the toggle from
+// showing "undefined" for a split second. Backend value always wins
+// once available, since it's the source of truth for the discount.
+const fallbackYearly = (monthlyPrice) => Math.round(monthlyPrice * 12 * 0.85)
 
 // ── SMS CREDIT BAR ────────────────────────────
 function SMSCreditBar({ credits, plan }) {
@@ -175,7 +183,8 @@ function StatusBanner({ billing }) {
             Subscription expired
           </p>
           <p style={{ fontSize: 'var(--text-xs)', color: '#991B1B', marginTop: 2 }}>
-            Your data is safe. Subscribe below to restore full access.
+            Your data is safe. Subscribe below to restore full access. Accounts left unpaid for
+            an extended period are automatically suspended, so please renew soon.
           </p>
         </div>
       </div>
@@ -237,7 +246,7 @@ function UsageCard({ label, current, limit, color, icon: Icon }) {
 }
 
 // ── PAYMENT MODAL ─────────────────────────────
-function PaymentModal({ type, plan, smsBundle, branchName, token, onClose, onSuccess }) {
+function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, onClose, onSuccess }) {
   const [loading,  setLoading]  = useState(false)
   const [creating, setCreating] = useState(true)
   const [payment,  setPayment]  = useState(null)
@@ -254,7 +263,10 @@ function PaymentModal({ type, plan, smsBundle, branchName, token, onClose, onSuc
     const create = async () => {
       try {
         const body = { type }
-        if (type === 'subscription' || type === 'upgrade') body.plan = plan
+        if (type === 'subscription' || type === 'upgrade') {
+          body.plan         = plan
+          body.billingCycle = billingCycle || 'monthly'
+        }
         if (type === 'sms')    body.smsBundleKey = smsBundle
         if (type === 'branch') body.branchDetails = { branchName }
 
@@ -295,11 +307,24 @@ function PaymentModal({ type, plan, smsBundle, branchName, token, onClose, onSuc
     branch:       'Request Additional Branch',
   }
 
+  const cycleLabel = billingCycle === 'yearly' ? 'Yearly' : 'Monthly'
+
   return (
     <div className="modal-overlay">
       <div className="modal modal-md">
         <div className="modal-header">
-          <h2 className="modal-title">{titles[type] || 'Payment'}</h2>
+          <h2 className="modal-title">
+            {titles[type] || 'Payment'}
+            {(type === 'subscription' || type === 'upgrade') && (
+              <span style={{
+                marginLeft: 8, fontSize: 11, fontWeight: 700,
+                padding: '2px 8px', borderRadius: 999,
+                background: 'var(--primary-light)', color: 'var(--primary)'
+              }}>
+                {cycleLabel}
+              </span>
+            )}
+          </h2>
           <button className="modal-close" onClick={onClose}><span style={{ fontSize: 18 }}>×</span></button>
         </div>
         <div className="modal-body">
@@ -339,6 +364,11 @@ function PaymentModal({ type, plan, smsBundle, branchName, token, onClose, onSuc
                 <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-4xl)', fontWeight: 800, color: 'var(--primary)' }}>
                   GHS {payment.amount}
                 </p>
+                {(type === 'subscription' || type === 'upgrade') && (
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)', marginTop: 2 }}>
+                    {cycleLabel} billing — covers {billingCycle === 'yearly' ? '365 days' : '30 days'}
+                  </p>
+                )}
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
                   Ref: <strong style={{ color: 'var(--primary)' }}>{payment.reference}</strong>
                 </p>
@@ -495,10 +525,11 @@ function BranchesTab({ billing, token, onPayment }) {
 // ── MAIN BILLING PAGE ─────────────────────────
 export default function Billing() {
   const { token } = useAuth()
-  const [billing,   setBilling]   = useState(null)
-  const [loading,   setLoading]   = useState(true)
-  const [modal,     setModal]     = useState(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [billing,      setBilling]      = useState(null)
+  const [loading,      setLoading]      = useState(true)
+  const [modal,        setModal]        = useState(null)
+  const [activeTab,    setActiveTab]    = useState('overview')
+  const [billingCycle, setBillingCycle] = useState('monthly') // 'monthly' | 'yearly' — Plans tab toggle
 
   const fetchBilling = useCallback(async () => {
     try {
@@ -513,8 +544,8 @@ export default function Billing() {
 
   useEffect(() => { fetchBilling() }, [fetchBilling])
 
-  const openPayment = (type, plan = null, smsBundle = null, branchName = null) => {
-    setModal({ type, plan, smsBundle, branchName })
+  const openPayment = (type, plan = null, smsBundle = null, branchName = null, cycle = billingCycle) => {
+    setModal({ type, plan, smsBundle, branchName, billingCycle: cycle })
   }
 
   const currentPlanId = billing?.plan
@@ -535,6 +566,8 @@ export default function Billing() {
     { id: 'sms',       label: 'SMS Credits' },
     { id: 'history',   label: 'History'     },
   ]
+
+  const yearlyDiscountPct = billing?.yearlyDiscountPct ?? 15
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -615,7 +648,7 @@ export default function Billing() {
                   {billing.status === 'trial' ? 'Upgrade to unlock full potential' : 'Renew your subscription'}
                 </h3>
                 <p style={{ opacity: 0.85, fontSize: 'var(--text-sm)' }}>
-                  Starting at GHS 200/month. Pay via MoMo — activated within 24 hours.
+                  Starting at GHS 200/month — or save {yearlyDiscountPct}% with yearly billing. Pay via MoMo, activated within 24 hours.
                 </p>
               </div>
               <button
@@ -638,11 +671,57 @@ export default function Billing() {
       {/* ── PLANS ── */}
       {activeTab === 'plans' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+
+          {/* Monthly / Yearly toggle */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{
+              display: 'inline-flex', background: 'var(--surface-2)',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+              padding: 4, gap: 4
+            }}>
+              {['monthly', 'yearly'].map(cycle => (
+                <button
+                  key={cycle}
+                  onClick={() => setBillingCycle(cycle)}
+                  style={{
+                    padding: '0.5rem 1.25rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: billingCycle === cycle ? 'var(--primary)' : 'transparent',
+                    color:      billingCycle === cycle ? 'white' : 'var(--text-secondary)',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {cycle === 'monthly' ? 'Monthly' : (
+                    <>
+                      Yearly
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+                        background: billingCycle === cycle ? 'rgba(255,255,255,0.25)' : 'var(--success-bg)',
+                        color:      billingCycle === cycle ? 'white' : 'var(--success)'
+                      }}>
+                        Save {yearlyDiscountPct}%
+                      </span>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-4)' }}>
             {PLANS.map(plan => {
               const isCurrent = currentPlanId === plan.id
               const isUpgrade = PLANS.findIndex(p => p.id === currentPlanId) < PLANS.findIndex(p => p.id === plan.id)
               const PlanIcon  = plan.icon
+
+              const yearlyPrice  = billing?.yearlyPlans?.[plan.id]?.priceGHS ?? fallbackYearly(plan.priceGHS)
+              const displayPrice = billingCycle === 'yearly' ? yearlyPrice : plan.priceGHS
+              const monthlyEquiv = billingCycle === 'yearly' ? Math.round(yearlyPrice / 12) : null
 
               return (
                 <div key={plan.id} style={{
@@ -668,9 +747,18 @@ export default function Billing() {
                   </div>
 
                   <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, color: 'var(--text-primary)', fontSize: 'var(--text-lg)', marginBottom: 'var(--space-1)' }}>{plan.name}</h3>
-                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 800, color: plan.color, marginBottom: 'var(--space-4)' }}>
-                    GHS {plan.priceGHS}<span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontWeight: 500 }}>/mo</span>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 800, color: plan.color, marginBottom: 2 }}>
+                    GHS {displayPrice}
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontWeight: 500 }}>
+                      /{billingCycle === 'yearly' ? 'yr' : 'mo'}
+                    </span>
                   </p>
+                  {billingCycle === 'yearly' && (
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }}>
+                      ≈ GHS {monthlyEquiv}/mo billed annually
+                    </p>
+                  )}
+                  {billingCycle === 'monthly' && <div style={{ marginBottom: 'var(--space-4)' }} />}
 
                   <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', flex: 1, marginBottom: 'var(--space-5)' }}>
                     {plan.features.map(f => (
@@ -688,13 +776,15 @@ export default function Billing() {
                     <button
                       onClick={() => {
                         const type = billing?.status === 'active' ? 'upgrade' : 'subscription'
-                        openPayment(type, plan.id)
+                        openPayment(type, plan.id, null, null, billingCycle)
                       }}
                       style={{ width: '100%', padding: '0.625rem', background: plan.color, color: 'white', border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', transition: 'opacity 0.2s' }}
                       onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
                       onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                     >
-                      {billing?.status === 'active' && isUpgrade ? `Upgrade to ${plan.name}` : `Subscribe — GHS ${plan.priceGHS}/mo`}
+                      {billing?.status === 'active' && isUpgrade
+                        ? `Upgrade to ${plan.name}`
+                        : `Subscribe — GHS ${displayPrice}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`}
                     </button>
                   )}
                 </div>
@@ -771,6 +861,7 @@ export default function Billing() {
         <PaymentModal
           type={modal.type}
           plan={modal.plan}
+          billingCycle={modal.billingCycle}
           smsBundle={modal.smsBundle}
           branchName={modal.branchName}
           token={token}
@@ -803,11 +894,12 @@ function HistoryRow({ payment, token, onRefresh }) {
   const status = STATUS_STYLES[payment.status] || STATUS_STYLES.awaiting_payment
 
   const typeLabel = () => {
+    const cycleTag = payment.metadata?.billingCycle === 'yearly' ? ' (Yearly)' : ''
     if (payment.type === 'subscription' || payment.type === 'upgrade') {
       const planName = payment.plan
         ? payment.plan.charAt(0).toUpperCase() + payment.plan.slice(1)
         : ''
-      return `Subscription — ${planName}`
+      return `Subscription — ${planName}${cycleTag}`
     }
     if (payment.type === 'branch') return `Extra Branch — ${payment.metadata?.branchName || ''}`
     if (payment.type === 'sms')    return `SMS Bundle — ${payment.metadata?.bundle || ''} credits`

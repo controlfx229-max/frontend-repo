@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth, AuthProvider } from './context/AuthContext'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -126,33 +127,54 @@ function BlockPlatformOwner({ children }) {
 
 // ─────────────────────────────────────────────
 // GUARD: Subscription check
-// Expired/suspended/pending → /billing only
-// trial or active → full access
-// undefined/null status → allow through (safety)
+//
+// CHANGED BEHAVIOUR:
+// Previously this just re-routed the user to /billing while keeping
+// their session alive — meaning an expired church could sit logged in
+// indefinitely, only ever seeing the Billing page.
+//
+// Now, the moment we see a non-full-access status (expired, suspended,
+// pending_approval, pending_payment) while inside a protected church
+// route, we actively end the session (logout()) and let RequireAuth
+// bounce them to /login. They must re-authenticate. Login itself:
+//   - blocks 'suspended' orgs outright (see auth.controller.login)
+//   - otherwise succeeds, and resolveDestination() sends any non-full-
+//     access status straight to /billing anyway
+// So the net effect is: session dies → forced re-login → billing-only
+// (or hard-blocked if suspended), never a lingering dashboard session.
 // ─────────────────────────────────────────────
 function RequireSubscription({ children }) {
-  const { user, loading } = useAuth()
-  const location = useLocation()
+  const { user, loading, logout } = useAuth()
+  const hasForcedLogout = useRef(false)
+
+  const status = user?.subscriptionStatus
+  const isBlocked = status && !FULL_ACCESS_STATUSES.includes(status)
+
+  useEffect(() => {
+    if (loading) return
+    if (user?.role === 'PLATFORM_OWNER') return
+    if (!isBlocked) return
+    if (hasForcedLogout.current) return
+
+    hasForcedLogout.current = true
+    logout()
+  }, [loading, user, isBlocked, logout])
 
   if (loading) return <AppLoading />
 
   // Platform owner is never subscription-gated
   if (user?.role === 'PLATFORM_OWNER') return children
 
-  const status = user?.subscriptionStatus
-
   // If status is missing, allow through — backend enforces anyway
   if (!status) return children
 
   // Active trial or paid plan → full access
-  if (FULL_ACCESS_STATUSES.includes(status)) return children
+  if (!isBlocked) return children
 
-  // Expired, suspended, pending → billing only
-  if (location.pathname !== '/billing') {
-    return <Navigate to="/billing" replace />
-  }
-
-  return children
+  // Blocked status → the effect above is already ending the session.
+  // Show a loading state for the brief moment before RequireAuth
+  // takes over and redirects to /login.
+  return <AppLoading />
 }
 
 // ─────────────────────────────────────────────
