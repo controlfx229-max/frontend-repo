@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowRight, Check, ChevronDown, Play } from 'lucide-react'
 import Logo from '../../components/Logo'
 
@@ -125,6 +125,7 @@ export default function LearnMore() {
   const [memberTab,   setMemberTab]   = useState('overview')
   const [showVideo,   setShowVideo]   = useState(false)
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const videoRef = useRef(null)
 
   useEffect(() => {
     // Some browsers restore the previous scroll position on load/navigation.
@@ -167,6 +168,18 @@ export default function LearnMore() {
   const scrollTo = (id) => {
     const el = document.getElementById(id)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // Reveal the <video> element and immediately call .play() on it.
+  // Calling .play() synchronously inside the click handler (rather than
+  // relying on the `autoPlay` attribute, which fires on a later React
+  // render) keeps this tied to the user's click, so Chrome/Edge/Firefox
+  // don't silently mute it as an "unrequested" autoplay.
+  const handlePlayDemo = () => {
+    setShowVideo(true)
+    setTimeout(() => {
+      videoRef.current?.play()
+    }, 0)
   }
 
   const memberTabs = {
@@ -537,17 +550,28 @@ export default function LearnMore() {
           </div>
           <p className="lmr-dash-cap">The Dashboard — your church's pulse, every time you open the app</p>
 
-          {/* Demo video — sits right under the dashboard screenshot, as requested */}
+          {/* Demo video — sits right under the dashboard screenshot, as requested.
+              Fixed: video is served as /videos/ministryos-demo.mp4 (converted from
+              the original .mov for cross-browser compatibility), and playback is
+              triggered via an explicit videoRef.current.play() call inside the click
+              handler rather than the `autoPlay` attribute — this keeps it tied to the
+              user's click so browsers don't silently mute it as an unrequested autoplay. */}
           <div className="lmr-demo-wrap">
             <div className="lmr-demo-card">
               {showVideo ? (
-                <video className="lmr-demo-video" src="/videos/ministryos-demo.mp4" controls autoPlay />
+                <video
+                  ref={videoRef}
+                  className="lmr-demo-video"
+                  src="/videos/ministryos-demo.mp4"
+                  controls
+                  preload="metadata"
+                />
               ) : (
-                <div className="lmr-demo-thumb" onClick={() => setShowVideo(true)}>
+                <div className="lmr-demo-thumb" onClick={handlePlayDemo}>
                   <div className="lmr-demo-play">
                     <Play size={24} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
                   </div>
-                  <span className="lmr-demo-label">▶ Watch the 2-minute demo   coming soon...</span>
+                  <span className="lmr-demo-label">▶ Watch the 6-minute demo</span>
                 </div>
               )}
             </div>
