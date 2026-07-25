@@ -32,6 +32,12 @@ import Automations    from './pages/automations/Automations'
 import TwoFactorSetup    from './pages/auth/TwoFactorSetup'
 import TwoFactorVerify   from './pages/auth/TwoFactorVerify'
 import BackupCodeVerify  from './pages/auth/BackupCodeVerify'
+import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import TermsOfService from './pages/legal/TermsOfService'
+import CookiePolicy from './pages/legal/CookiePolicy'
+import RefundPolicy from './pages/legal/RefundPolicy'
+import AcceptableUsePolicy from './pages/legal/AcceptableUsePolicy'
+import DataSecurityPolicy from './pages/legal/DataSecurityPolicy'
 
 
 // Billing & Platform Admin
@@ -235,6 +241,12 @@ function AppRoutes() {
       <Route path="/2fa-setup"   element={<TwoFactorSetup />} />
       <Route path="/2fa-verify"  element={<TwoFactorVerify />} />
       <Route path="/2fa-backup"  element={<BackupCodeVerify />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+<Route path="/terms-of-service" element={<TermsOfService />} />
+<Route path="/cookie-policy" element={<CookiePolicy />} />
+<Route path="/refund-policy" element={<RefundPolicy />} />
+<Route path="/acceptable-use-policy" element={<AcceptableUsePolicy />} />
+<Route path="/data-security" element={<DataSecurityPolicy />} />
 
 
 

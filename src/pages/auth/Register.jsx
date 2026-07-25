@@ -175,7 +175,7 @@ function StepChurch({ form, onChange, error }) {
 }
 
 // ─── STEP 2: ADMIN ACCOUNT ───────────────────
-function StepAdmin({ form, onChange, error, showPassword, setShowPassword }) {
+function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agreed, setAgreed }) {
   return (
     <div>
       <div style={{ marginBottom: '28px' }}>
@@ -299,6 +299,19 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword }) {
             You'll start on a <strong>1-month free trial</strong> with <strong>200 free SMS credits</strong> included — no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
           </p>
         </div>
+
+        <label style={{ display: 'flex', gap: 8, fontSize: 13, color: '#374151', alignItems: 'flex-start' }}>
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={e => setAgreed(e.target.checked)}
+            style={{ marginTop: 2 }}
+          />
+          I have read and agree to the{' '}
+          <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
+          and{' '}
+          <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+        </label>
       </div>
     </div>
   )
@@ -352,6 +365,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [agreed, setAgreed] = useState(false)
   const [form, setForm] = useState({
     churchName: '', denomination: '', country: '', churchEmail: '', churchPhone: '',
     adminName: '', adminEmail: '', adminPhone: '', adminPassword: '', confirmPassword: ''
@@ -377,6 +391,7 @@ export default function Register() {
     if (!form.adminPhone.trim()) { setError('Your phone number is required.'); return false }
     if (form.adminPassword.length < 8) { setError('Password must be at least 8 characters.'); return false }
     if (form.adminPassword !== form.confirmPassword) { setError('Passwords do not match.'); return false }
+    if (!agreed) { setError('Please agree to the Terms of Service and Privacy Policy.'); return false }
     return true
   }
 
@@ -810,7 +825,15 @@ export default function Register() {
               <StepChurch form={form} onChange={handleChange} error={error} />
             )}
             {step === 1 && (
-              <StepAdmin form={form} onChange={handleChange} error={error} showPassword={showPassword} setShowPassword={setShowPassword} />
+              <StepAdmin
+                form={form}
+                onChange={handleChange}
+                error={error}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                agreed={agreed}
+                setAgreed={setAgreed}
+              />
             )}
             {step === 2 && (
               <StepSuccess churchName={form.churchName} adminName={form.adminName} />
@@ -829,7 +852,7 @@ export default function Register() {
                   </button>
                 )}
                 {step === 1 && (
-                  <button className="btn-login" onClick={handleSubmit} disabled={loading}>
+                  <button className="btn-login" onClick={handleSubmit} disabled={loading || !agreed}>
                     {loading
                       ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Creating...</>
                       : <>Create Account <ArrowRight size={18} /></>}

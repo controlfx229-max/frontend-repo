@@ -377,6 +377,12 @@ function PaymentModal({ type, plan, smsBundle, branchName, token, onClose, onSuc
                 </p>
               </div>
 
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                By subscribing, you agree to the MinistryOS{' '}
+                <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a> and{' '}
+                <a href="/refund-policy" target="_blank" rel="noopener noreferrer">Billing Policy</a>.
+              </p>
+
               <div className="form-actions">
                 <button className="btn-outline" onClick={onClose}>Cancel</button>
                 <button className="btn-primary" onClick={handleSubmitProof} disabled={loading}>

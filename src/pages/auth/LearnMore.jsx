@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ArrowRight, Check, ChevronDown, Play } from 'lucide-react'
 import Logo from '../../components/Logo'
+import Footer from '../../components/Footer'
 
 /* ── IMAGE PATHS ──────────────────────────────────────────────────────────────
    Images are located in /public/images/ folder
@@ -344,10 +345,6 @@ export default function LearnMore() {
         .lmr-cta-secondary { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #374151; font-size: 14px; font-weight: 700; padding: 14px 24px; border-radius: 12px; text-decoration: none; border: 1.5px solid #E5E7EB; transition: border-color .15s; }
         .lmr-cta-secondary:hover { border-color: #C7D2FE; color: #4F46E5; }
         .lmr-cta-note { font-size: 13px; color: #9CA3AF; margin-top: 18px; }
-
-        /* ── FOOTER ── */
-        .lmr-footer { padding: 24px 20px; text-align: center; border-top: 1px solid #F3F4F6; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
-        .lmr-footer span { font-size: 12px; color: #9CA3AF; }
 
         /* ── DIVIDER ── */
         .lmr-div { height: 1px; background: #F3F4F6; max-width: 1100px; margin: 0 auto; }
@@ -1083,10 +1080,7 @@ export default function LearnMore() {
         </section>
 
         {/* ── FOOTER ── */}
-        <footer className="lmr-footer">
-          <Logo size={20} showText={false} />
-          <span>© 2026 EM Control IT Solutions · MinistryOS · All rights reserved</span>
-        </footer>
+        <Footer />
 
       </div>
 
