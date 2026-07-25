@@ -305,12 +305,14 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agree
             type="checkbox"
             checked={agreed}
             onChange={e => setAgreed(e.target.checked)}
-            style={{ marginTop: 2 }}
+            style={{ marginTop: 2, flexShrink: 0 }}
           />
-          I have read and agree to the{' '}
-          <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
-          and{' '}
-          <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+          <span>
+            I have read and agree to the{' '}
+            <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
+            and{' '}
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+          </span>
         </label>
       </div>
     </div>
