@@ -5,10 +5,35 @@ import {
   Users, Wallet, AlertCircle,
   Shield, RefreshCw, Ban, Play, Search,
   ChevronDown, ChevronUp,
-  LogOut, CreditCard, Bell
+  LogOut, CreditCard, Bell,
+  EyeOff, Eye, FlaskConical
 } from 'lucide-react'
 
 const API = `${import.meta.env.VITE_API_URL.replace('/api/v1', '')}/api/admin/platform`
+
+// ── TEST/DEMO ACCOUNT VISIBILITY ──────────────
+// Purely a display filter, stored in this browser only. Nothing is
+// deleted and nothing touches the database — it just lets the platform
+// owner hide pre-launch trial/demo churches (and their payments) from
+// the dashboard so real numbers are easy to monitor after launch.
+// Because it's localStorage-based, it's per-browser: hiding an account
+// here won't hide it if you log in from a different device.
+const HIDDEN_KEY = 'ministryos_admin_hidden_orgs'
+
+const getHiddenIds = () => {
+  try {
+    const raw = localStorage.getItem(HIDDEN_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+const saveHiddenIds = (ids) => {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids)) } catch {}
+}
+
+// Used to estimate MRR from visible (non-hidden) churches only, since
+// the raw `overview.mrrGHS` from the backend still includes everyone.
+const PLAN_PRICES_GHS = { starter: 200, growth: 350, enterprise: 500 }
 
 // ── HELPERS ───────────────────────────────────
 const formatGHS = (n) =>
@@ -414,7 +439,7 @@ function PaymentRow({ payment, token, onRefresh }) {
 }
 
 // ── CHURCH ROW ────────────────────────────────
-function ChurchRow({ org, token, onRefresh }) {
+function ChurchRow({ org, token, onRefresh, isHidden, onToggleHidden }) {
   const [expanded, setExpanded]   = useState(false)
   const [confirm, setConfirm]     = useState(null)
   const [showExtend, setShowExtend] = useState(false)
@@ -443,7 +468,8 @@ function ChurchRow({ org, token, onRefresh }) {
           padding: 'var(--space-4) var(--space-5)',
           borderBottom: '1px solid var(--border)',
           transition: 'background var(--transition-fast)',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          opacity: isHidden ? 0.5 : 1
         }}
         onClick={() => setExpanded(e => !e)}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
@@ -464,9 +490,19 @@ function ChurchRow({ org, token, onRefresh }) {
         <div style={{ flex: 2, minWidth: 0 }}>
           <p style={{
             fontWeight: 600, color: 'var(--text-primary)',
-            fontSize: 'var(--text-sm)', marginBottom: 2
+            fontSize: 'var(--text-sm)', marginBottom: 2,
+            display: 'flex', alignItems: 'center', gap: 6
           }}>
             {org.name}
+            {isHidden && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+                background: '#F3F4F6', color: '#6B7280', textTransform: 'uppercase',
+                letterSpacing: '0.04em', flexShrink: 0
+              }}>
+                Test
+              </span>
+            )}
           </p>
           <p style={{
             fontSize: 'var(--text-xs)', color: 'var(--text-muted)',
@@ -523,6 +559,20 @@ function ChurchRow({ org, token, onRefresh }) {
             onClick={(e) => { e.stopPropagation(); setShowExtend(true) }}
           >
             <RefreshCw size={13} /> Extend Subscription
+          </button>
+
+          <button
+            className="btn-outline"
+            style={{
+              display: 'flex', alignItems: 'center',
+              gap: 'var(--space-2)', fontSize: 'var(--text-xs)'
+            }}
+            onClick={(e) => { e.stopPropagation(); onToggleHidden(org._id) }}
+            title={isHidden
+              ? 'Show this church in dashboard totals again'
+              : 'Hide this church from dashboard totals (display only — nothing is deleted)'}
+          >
+            {isHidden ? <><Eye size={13} /> Unhide</> : <><EyeOff size={13} /> Hide from dashboard</>}
           </button>
 
           {org.subscriptionStatus !== 'suspended' ? (
@@ -811,6 +861,32 @@ export default function PlatformAdmin() {
   const [churchSearch, setChurchSearch]   = useState('')
   const [churchStatus, setChurchStatus]   = useState('')
 
+  // ── Test/demo account visibility (display-only, localStorage) ──
+  const [hiddenIds, setHiddenIds]     = useState(() => getHiddenIds())
+  const [showHidden, setShowHidden]   = useState(false)
+
+  const toggleHidden = (orgId) => {
+    setHiddenIds(prev => {
+      const next = prev.includes(orgId) ? prev.filter(id => id !== orgId) : [...prev, orgId]
+      saveHiddenIds(next)
+      return next
+    })
+  }
+
+  const hideAllTrial = () => {
+    const trialIds = churches.filter(c => c.subscriptionStatus === 'trial').map(c => c._id)
+    setHiddenIds(prev => {
+      const next = Array.from(new Set([...prev, ...trialIds]))
+      saveHiddenIds(next)
+      return next
+    })
+  }
+
+  const unhideAll = () => {
+    setHiddenIds([])
+    saveHiddenIds([])
+  }
+
   const fetchAll = useCallback(async () => {
     if (!token) return
     const headers = { Authorization: `Bearer ${token}` }
@@ -835,11 +911,18 @@ export default function PlatformAdmin() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  const filteredPayments = payments.filter(p =>
+  // Churches/payments actually shown, respecting the hide filter unless
+  // "Show test accounts" is toggled on.
+  const visibleChurches = showHidden ? churches : churches.filter(c => !hiddenIds.includes(c._id))
+  const visiblePayments = showHidden
+    ? payments
+    : payments.filter(p => !hiddenIds.includes(p.organizationId?._id))
+
+  const filteredPayments = visiblePayments.filter(p =>
     paymentFilter ? p.status === paymentFilter : true
   )
 
-  const filteredChurches = churches.filter(c => {
+  const filteredChurches = visibleChurches.filter(c => {
     const matchSearch = !churchSearch ||
       c.name.toLowerCase().includes(churchSearch.toLowerCase()) ||
       c.email?.toLowerCase().includes(churchSearch.toLowerCase())
@@ -847,11 +930,30 @@ export default function PlatformAdmin() {
     return matchSearch && matchStatus
   })
 
-  const pendingCount = payments.filter(p => p.status === 'pending_approval').length
+  // Recomputed "clean" overview numbers from visible churches/payments only,
+  // so hidden test/trial accounts don't skew MRR, church counts, or pending
+  // approvals shown on the Overview tab. Total member count still comes from
+  // the raw backend overview object, since per-org member counts aren't
+  // included in the churches list — see note in the Overview tab.
+  const cleanChurchStats = {
+    total:     visibleChurches.length,
+    active:    visibleChurches.filter(c => c.subscriptionStatus === 'active').length,
+    trial:     visibleChurches.filter(c => c.subscriptionStatus === 'trial').length,
+    expired:   visibleChurches.filter(c => c.subscriptionStatus === 'expired').length,
+    suspended: visibleChurches.filter(c => c.subscriptionStatus === 'suspended').length,
+  }
+  const cleanMrrGHS = visibleChurches
+    .filter(c => c.subscriptionStatus === 'active')
+    .reduce((sum, c) => sum + (PLAN_PRICES_GHS[c.subscriptionPlan] || 0), 0)
+  const cleanPendingPayments = visiblePayments.filter(p => p.status === 'pending_approval').length
+  const cleanRecentApprovals = (overview?.recentApprovals || []).filter(
+    p => showHidden || !hiddenIds.includes(p.organizationId?._id)
+  )
+  const hiddenCount = hiddenIds.length
 
   const TABS = [
     { id: 'overview', label: 'Overview'  },
-    { id: 'payments', label: `Payments${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
+    { id: 'payments', label: `Payments${cleanPendingPayments > 0 ? ` (${cleanPendingPayments})` : ''}` },
     { id: 'churches', label: 'Churches'  },
   ]
 
@@ -910,14 +1012,14 @@ export default function PlatformAdmin() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
 
           {/* Pending pill */}
-          {pendingCount > 0 && (
+          {cleanPendingPayments > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
               padding: '4px 12px', borderRadius: 999,
               background: 'var(--warning-bg)', color: 'var(--warning-text)',
               fontSize: 'var(--text-xs)', fontWeight: 700
             }}>
-              <Clock size={12} /> {pendingCount} pending approval
+              <Clock size={12} /> {cleanPendingPayments} pending approval
             </div>
           )}
 
@@ -984,6 +1086,59 @@ export default function PlatformAdmin() {
           </button>
         </div>
 
+        {/* ── TEST/DEMO ACCOUNT VISIBILITY BANNER ── */}
+        {(hiddenCount > 0 || churches.some(c => c.subscriptionStatus === 'trial')) && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap',
+            padding: 'var(--space-3) var(--space-5)', marginBottom: 'var(--space-6)',
+            background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 'var(--radius-lg)'
+          }}>
+            <FlaskConical size={16} color="#6D28D9" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: 'var(--text-xs)', color: '#5B21B6', flex: 1, minWidth: 200 }}>
+              {hiddenCount > 0
+                ? <><strong>{hiddenCount}</strong> test/demo church{hiddenCount !== 1 ? 'es are' : ' is'} hidden from totals below. This only affects your view in this browser — nothing was deleted.</>
+                : 'Pre-launch? You can hide trial/demo churches from your dashboard totals without deleting anything.'}
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+              {churches.some(c => c.subscriptionStatus === 'trial' && !hiddenIds.includes(c._id)) && (
+                <button
+                  onClick={hideAllTrial}
+                  style={{
+                    fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 999,
+                    background: '#6D28D9', color: 'white', border: 'none', cursor: 'pointer'
+                  }}
+                >
+                  Hide all trial accounts
+                </button>
+              )}
+              {hiddenCount > 0 && (
+                <button
+                  onClick={() => setShowHidden(s => !s)}
+                  style={{
+                    fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 999,
+                    background: showHidden ? '#6D28D9' : '#fff', color: showHidden ? '#fff' : '#6D28D9',
+                    border: '1.5px solid #6D28D9', cursor: 'pointer'
+                  }}
+                >
+                  {showHidden ? 'Showing all — hide test again' : `Show ${hiddenCount} hidden`}
+                </button>
+              )}
+              {hiddenCount > 0 && (
+                <button
+                  onClick={unhideAll}
+                  style={{
+                    fontSize: 11, fontWeight: 600, padding: '5px 10px',
+                    background: 'none', color: '#5B21B6', border: 'none', cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── OVERVIEW TAB ── */}
         {activeTab === 'overview' && overview && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -994,30 +1149,31 @@ export default function PlatformAdmin() {
             }}>
               <StatCard
                 label="Total Churches"
-                value={overview.churches.total}
-                sub={`${overview.churches.active} active`}
+                value={cleanChurchStats.total}
+                sub={`${cleanChurchStats.active} active${hiddenCount > 0 && !showHidden ? ` · ${hiddenCount} test hidden` : ''}`}
                 icon={Building2}
                 color="var(--primary)"
               />
               <StatCard
                 label="Total Members"
                 value={overview.totalMembers.toLocaleString()}
+                sub={hiddenCount > 0 && !showHidden ? 'Includes hidden test accounts' : undefined}
                 icon={Users}
                 color="var(--success)"
               />
               <StatCard
                 label="MRR"
-                value={formatGHS(overview.mrrGHS)}
-                sub="Monthly recurring revenue"
+                value={formatGHS(cleanMrrGHS)}
+                sub={hiddenCount > 0 && !showHidden ? 'Estimated · excludes hidden accounts' : 'Monthly recurring revenue'}
                 icon={Wallet}
                 color="var(--accent)"
               />
               <StatCard
                 label="Pending Approvals"
-                value={overview.pendingPayments}
+                value={cleanPendingPayments}
                 sub="Awaiting review"
                 icon={Clock}
-                color={overview.pendingPayments > 0 ? 'var(--warning)' : 'var(--text-muted)'}
+                color={cleanPendingPayments > 0 ? 'var(--warning)' : 'var(--text-muted)'}
               />
             </div>
 
@@ -1040,10 +1196,10 @@ export default function PlatformAdmin() {
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {[
-                    { label: 'Active',    count: overview.churches.active,    color: 'var(--success)' },
-                    { label: 'Trial',     count: overview.churches.trial,     color: 'var(--info)'    },
-                    { label: 'Expired',   count: overview.churches.expired,   color: 'var(--warning)' },
-                    { label: 'Suspended', count: overview.churches.suspended, color: 'var(--danger)'  },
+                    { label: 'Active',    count: cleanChurchStats.active,    color: 'var(--success)' },
+                    { label: 'Trial',     count: cleanChurchStats.trial,     color: 'var(--info)'    },
+                    { label: 'Expired',   count: cleanChurchStats.expired,   color: 'var(--warning)' },
+                    { label: 'Suspended', count: cleanChurchStats.suspended, color: 'var(--danger)'  },
                   ].map(({ label, count, color }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                       <div style={{
@@ -1067,8 +1223,8 @@ export default function PlatformAdmin() {
                       }}>
                         <div style={{
                           height: '100%',
-                          width: `${overview.churches.total > 0
-                            ? (count / overview.churches.total) * 100 : 0}%`,
+                          width: `${cleanChurchStats.total > 0
+                            ? (count / cleanChurchStats.total) * 100 : 0}%`,
                           background: color, borderRadius: 999
                         }} />
                       </div>
@@ -1089,9 +1245,9 @@ export default function PlatformAdmin() {
                 }}>
                   Recent Approvals
                 </h3>
-                {overview.recentApprovals?.length > 0 ? (
+                {cleanRecentApprovals.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                    {overview.recentApprovals.slice(0, 5).map(p => (
+                    {cleanRecentApprovals.slice(0, 5).map(p => (
                       <div
                         key={p._id}
                         style={{
@@ -1249,7 +1405,14 @@ export default function PlatformAdmin() {
                 </div>
               ) : (
                 filteredChurches.map(org => (
-                  <ChurchRow key={org._id} org={org} token={token} onRefresh={fetchAll} />
+                  <ChurchRow
+                    key={org._id}
+                    org={org}
+                    token={token}
+                    onRefresh={fetchAll}
+                    isHidden={hiddenIds.includes(org._id)}
+                    onToggleHidden={toggleHidden}
+                  />
                 ))
               )}
             </div>
