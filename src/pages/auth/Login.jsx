@@ -10,6 +10,12 @@ const FEATURES = [
   { icon: BarChart2,  text: 'Real-time church insights'     },
 ]
 
+// Standard (non-founding) trial SMS credits — mirrors
+// STANDARD_TRIAL_SMS_CREDITS in auth.controller.js. Only used as a
+// display fallback before /auth/founding-status has responded, or once
+// the founding promo has run out.
+const STANDARD_TRIAL_SMS_FALLBACK = 25
+
 export default function Login() {
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
@@ -17,9 +23,28 @@ export default function Login() {
   const [error, setError]               = useState('')
   const [form, setForm]                 = useState({ email: '', password: '' })
 
+  // Live founding-church promo status — powers the trial pills below.
+  // This page is public/pre-auth, so it hits the unauthenticated
+  // /auth/founding-status endpoint (same one Register.jsx and
+  // LearnMore.jsx use) rather than anything behind `protect`.
+  const [founding, setFounding] = useState(null)
+
   useEffect(() => {
     const msg = localStorage.getItem('logoutMessage')
     if (msg) { setError(msg); localStorage.removeItem('logoutMessage') }
+  }, [])
+
+  useEffect(() => {
+    const fetchFounding = async () => {
+      try {
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/auth/founding-status`)
+        const data = await res.json()
+        if (data.success) setFounding(data.founding)
+      } catch {
+        // Non-critical — falls back to standard trial copy below.
+      }
+    }
+    fetchFounding()
   }, [])
 
   const handleChange = (e) => {
@@ -52,6 +77,25 @@ export default function Login() {
     } catch { setError('Cannot connect to server. Please try again.') }
     finally  { setLoading(false) }
   }
+
+  const promoActive  = founding?.promoActive
+  const remaining    = founding?.remaining
+  const bonusCredits = founding?.bonusCredits || 200
+
+  // Copy used in three places below: desktop pill, mobile pill, and the
+  // small note under the register button. Computed once here so all
+  // three always stay in sync with each other and with the backend.
+  const trialPillDesktop = promoActive
+    ? `🎁 New here? Get a 1-month free trial + ${bonusCredits} free SMS credits (${remaining} founding spot${remaining !== 1 ? 's' : ''} left)`
+    : `🎁 New here? Get a 1-month free trial + ${STANDARD_TRIAL_SMS_FALLBACK} free SMS credits`
+
+  const trialPillMobile = promoActive
+    ? `🎁 New here? 1-month free trial + ${bonusCredits} free SMS (${remaining} left)`
+    : `🎁 New here? 1-month free trial + ${STANDARD_TRIAL_SMS_FALLBACK} free SMS`
+
+  const trialNote = promoActive
+    ? `1-month free trial · ${bonusCredits} free SMS credits · No card required`
+    : `1-month free trial · ${STANDARD_TRIAL_SMS_FALLBACK} free SMS credits · No card required`
 
   return (
     <>
@@ -540,7 +584,7 @@ export default function Login() {
               <p className="login-headline-body">
             Built for modern churches — manage members, track attendance, automate communication, manage finances, and gain real-time insights from anywhere.
               </p>
-              <span className="login-trial-pill">🎁 New here? Get a 1-month free trial + 200 free SMS credits</span>
+              <span className="login-trial-pill">{trialPillDesktop}</span>
             </div>
 
             <div className="login-features">
@@ -589,7 +633,7 @@ export default function Login() {
             <p className="login-mobile-body">
               Built for modern churches — manage members, track attendance, automate communication, manage finances, and gain real-time insights from anywhere.
             </p>
-            <span className="login-mobile-trial-pill">🎁 New here? 1-month free trial + 200 free SMS</span>
+            <span className="login-mobile-trial-pill">{trialPillMobile}</span>
 
             {/* Feature pills in a 2×2 grid */}
             <div className="login-mobile-features">
@@ -675,7 +719,7 @@ export default function Login() {
               <a href="/register" className="btn-register">
                 Register Your Church <ArrowRight size={16} />
               </a>
-              <p className="login-trial-note">1-month free trial · 200 free SMS credits · No card required</p>
+              <p className="login-trial-note">{trialNote}</p>
             </div>
 
             <p className="login-footer">© 2026 EM Control IT Solutions · MinistryOS</p>

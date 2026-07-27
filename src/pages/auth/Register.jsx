@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
   ArrowRight, ArrowLeft,
@@ -28,6 +28,12 @@ const FEATURES = [
   { icon: Zap,        text: 'Smart automations & alerts'    },
   { icon: BarChart2,  text: 'Real-time church insights'     },
 ]
+
+// Standard (non-founding) trial SMS credits — mirrors
+// STANDARD_TRIAL_SMS_CREDITS in auth.controller.js. Only used as a
+// display fallback before /auth/founding-status has responded; the
+// actual value always comes from the backend at registration time.
+const STANDARD_TRIAL_SMS_FALLBACK = 25
 
 // ─── STEP INDICATOR ──────────────────────────
 function StepIndicator({ current, total }) {
@@ -175,7 +181,11 @@ function StepChurch({ form, onChange, error }) {
 }
 
 // ─── STEP 2: ADMIN ACCOUNT ───────────────────
-function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agreed, setAgreed }) {
+function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agreed, setAgreed, foundingStatus }) {
+  const promoActive = foundingStatus?.promoActive
+  const remaining   = foundingStatus?.remaining
+  const bonusCredits = foundingStatus?.bonusCredits || 200
+
   return (
     <div>
       <div style={{ marginBottom: '28px' }}>
@@ -289,16 +299,38 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agree
           />
         </div>
 
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: '12px',
-          padding: '12px 14px', borderRadius: '10px',
-          background: '#ECFDF5', border: '1px solid #D1FAE5'
-        }}>
-          <CheckCircle size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <p style={{ fontSize: '13px', color: '#065F46', margin: 0, lineHeight: 1.5 }}>
-            You'll start on a <strong>1-month free trial</strong> with <strong>200 free SMS credits</strong> included — no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
-          </p>
-        </div>
+        {/* ── TRIAL / FOUNDING PROMO BANNER ──────────────────
+            Dynamic: shows the real founding-batch offer while spots
+            remain, and falls back to the standard trial messaging
+            once the first 20 churches have claimed their slot. Never
+            overpromises 200 credits to someone who won't actually get them. */}
+        {promoActive ? (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '12px',
+            padding: '12px 14px', borderRadius: '10px',
+            background: '#FFFBEB', border: '1px solid #FDE68A'
+          }}>
+            <CheckCircle size={16} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <p style={{ fontSize: '13px', color: '#92400E', margin: 0, lineHeight: 1.5 }}>
+              You'll start on a <strong>1-month free trial</strong>. Register now as one of our first{' '}
+              {foundingStatus.limit} founding churches and get the full <strong>{bonusCredits} free SMS credits</strong> —
+              only <strong>{remaining} spot{remaining !== 1 ? 's' : ''} left</strong>! No credit card required.
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '12px',
+            padding: '12px 14px', borderRadius: '10px',
+            background: '#ECFDF5', border: '1px solid #D1FAE5'
+          }}>
+            <CheckCircle size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <p style={{ fontSize: '13px', color: '#065F46', margin: 0, lineHeight: 1.5 }}>
+              You'll start on a <strong>1-month free trial</strong> with{' '}
+              <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> to try automations — no credit card required.
+              Your trial expires after 30 days, and you can upgrade anytime to keep going.
+            </p>
+          </div>
+        )}
 
         <label style={{ display: 'flex', gap: 8, fontSize: 13, color: '#374151', alignItems: 'flex-start' }}>
           <input
@@ -320,7 +352,13 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agree
 }
 
 // ─── STEP 3: SUCCESS ─────────────────────────
-function StepSuccess({ churchName, adminName }) {
+// Reflects the REAL values returned by the register API (smsCredits,
+// isFoundingChurch, foundingChurchNumber) rather than a hardcoded
+// "200 free SMS credits" claim — so this always matches what the
+// church's account was actually created with.
+function StepSuccess({ churchName, adminName, smsCredits, isFoundingChurch, foundingChurchNumber }) {
+  const credits = smsCredits ?? STANDARD_TRIAL_SMS_FALLBACK
+
   return (
     <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
       <div style={{
@@ -335,7 +373,17 @@ function StepSuccess({ churchName, adminName }) {
         </h2>
         <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: 1.6 }}>
           Welcome to MinistryOS, <strong>{adminName}</strong>.<br />
-          <strong>{churchName}</strong> is ready to go, with your <strong>1-month free trial</strong> and <strong>200 free SMS credits</strong> active.
+          {isFoundingChurch ? (
+            <>
+              <strong>{churchName}</strong> is ready to go — you're <strong>Founding Church #{foundingChurchNumber}</strong> 🎉,
+              with your <strong>1-month free trial</strong> and <strong>{credits} free SMS credits</strong> active.
+            </>
+          ) : (
+            <>
+              <strong>{churchName}</strong> is ready to go, with your <strong>1-month free trial</strong> and{' '}
+              <strong>{credits} free SMS credits</strong> active.
+            </>
+          )}
         </p>
       </div>
       <div style={{
@@ -372,6 +420,29 @@ export default function Register() {
     churchName: '', denomination: '', country: '', churchEmail: '', churchPhone: '',
     adminName: '', adminEmail: '', adminPhone: '', adminPassword: '', confirmPassword: ''
   })
+
+  // Live founding-church promo status — powers all the dynamic SMS
+  // credit copy on this page (see StepAdmin banner, mobile header,
+  // brand panel, and the success screen).
+  const [foundingStatus, setFoundingStatus] = useState(null)
+
+  // Snapshot of what the register API actually granted this church —
+  // used on the success screen instead of any hardcoded number.
+  const [regResult, setRegResult] = useState(null)
+
+  useEffect(() => {
+    const fetchFoundingStatus = async () => {
+      try {
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/auth/founding-status`)
+        const data = await res.json()
+        if (data.success) setFoundingStatus(data.founding)
+      } catch {
+        // Non-critical — the page just falls back to standard trial
+        // messaging if this fails, it never blocks registration.
+      }
+    }
+    fetchFoundingStatus()
+  }, [])
 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -419,6 +490,13 @@ export default function Register() {
       const data = await res.json()
       if (!data.success) { setError(data.message); return }
       login(data.token, data.user)
+      // Capture the REAL granted values for the success screen —
+      // never assume 200; the backend decides based on founding slot.
+      setRegResult({
+        smsCredits:           data.user?.smsCredits,
+        isFoundingChurch:     data.user?.isFoundingChurch,
+        foundingChurchNumber: data.user?.foundingChurchNumber
+      })
       setStep(2)
       setTimeout(() => { window.location.href = '/dashboard' }, 2500)
     } catch {
@@ -427,6 +505,10 @@ export default function Register() {
       setLoading(false)
     }
   }
+
+  const promoActive  = foundingStatus?.promoActive
+  const remaining    = foundingStatus?.remaining
+  const bonusCredits = foundingStatus?.bonusCredits || 200
 
   return (
     <>
@@ -747,9 +829,17 @@ export default function Register() {
 
           <div className="reg-mobile-trial-banner">
             <CheckCircle size={14} color="rgba(255,255,255,0.85)" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <p>
-              <strong>1-month free trial</strong> with <strong>200 free SMS credits</strong> included. Trial expires after 30 days — upgrade anytime to keep going.
-            </p>
+            {promoActive ? (
+              <p>
+                <strong>1-month free trial</strong> — register now as a founding church for{' '}
+                <strong>{bonusCredits} free SMS credits</strong> ({remaining} spot{remaining !== 1 ? 's' : ''} left).
+              </p>
+            ) : (
+              <p>
+                <strong>1-month free trial</strong> with <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> included.
+                Trial expires after 30 days — upgrade anytime to keep going.
+              </p>
+            )}
           </div>
 
           <div className="reg-mobile-features">
@@ -782,9 +872,18 @@ export default function Register() {
 
             <div className="reg-trial-banner">
               <CheckCircle size={16} color="#fff" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <p>
-                Start with a <strong>1-month free trial</strong> and <strong>200 free SMS credits</strong> — no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
-              </p>
+              {promoActive ? (
+                <p>
+                  Start with a <strong>1-month free trial</strong>. Register now as one of our first{' '}
+                  {foundingStatus.limit} founding churches for the full <strong>{bonusCredits} free SMS credits</strong> —
+                  only <strong>{remaining} spot{remaining !== 1 ? 's' : ''} left</strong>. No credit card required.
+                </p>
+              ) : (
+                <p>
+                  Start with a <strong>1-month free trial</strong> and <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> —
+                  no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
+                </p>
+              )}
             </div>
 
             <div className="reg-features">
@@ -835,10 +934,17 @@ export default function Register() {
                 setShowPassword={setShowPassword}
                 agreed={agreed}
                 setAgreed={setAgreed}
+                foundingStatus={foundingStatus}
               />
             )}
             {step === 2 && (
-              <StepSuccess churchName={form.churchName} adminName={form.adminName} />
+              <StepSuccess
+                churchName={form.churchName}
+                adminName={form.adminName}
+                smsCredits={regResult?.smsCredits}
+                isFoundingChurch={regResult?.isFoundingChurch}
+                foundingChurchNumber={regResult?.foundingChurchNumber}
+              />
             )}
 
             {step < 2 && (

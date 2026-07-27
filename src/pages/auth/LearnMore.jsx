@@ -48,6 +48,12 @@ const QUICK_NAV = [
   { id: 'pricing',       label: 'Pricing'       },
 ]
 
+// Standard (non-founding) trial SMS credits — mirrors
+// STANDARD_TRIAL_SMS_CREDITS in auth.controller.js. Used only as
+// display copy once the founding promo has run out; the founding
+// numbers themselves always come live from /auth/founding-status.
+const STANDARD_TRIAL_SMS_FALLBACK = 25
+
 /* ── BROWSER FRAME ───────────────────────────────────────────────────────── */
 function BrowserFrame({ src, alt, onZoom }) {
   return (
@@ -127,6 +133,24 @@ export default function LearnMore() {
   const [showVideo,   setShowVideo]   = useState(false)
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const videoRef = useRef(null)
+
+  // Live founding-church promo status — drives the hero badge/button,
+  // stats strip, and final CTA copy below. This is a PUBLIC page, so
+  // this hits the unauthenticated /auth/founding-status endpoint.
+  const [founding, setFounding] = useState(null)
+
+  useEffect(() => {
+    const fetchFounding = async () => {
+      try {
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/auth/founding-status`)
+        const data = await res.json()
+        if (data.success) setFounding(data.founding)
+      } catch {
+        // Non-critical — page falls back to standard-trial copy below.
+      }
+    }
+    fetchFounding()
+  }, [])
 
   useEffect(() => {
     // Some browsers restore the previous scroll position on load/navigation.
@@ -211,6 +235,19 @@ export default function LearnMore() {
   }
 
   const mt = memberTabs[memberTab]
+
+  const promoActive = founding?.promoActive
+  const remaining   = founding?.remaining
+
+  // ── Stats strip data — SMS stat is dynamic ──
+  const statsData = [
+    { val: '3 plans', lbl: 'Starting at GHS 200 / month', color: '#4F46E5' },
+    { val: 'MoMo',     lbl: 'Mobile Money giving built in', color: '#059669' },
+    promoActive
+      ? { val: `${founding.bonusCredits} SMS`, lbl: `Free credits — ${remaining} founding spot${remaining !== 1 ? 's' : ''} left`, color: '#D97706' }
+      : { val: `${STANDARD_TRIAL_SMS_FALLBACK} SMS`, lbl: 'Free trial credits included', color: '#D97706' },
+    { val: '100%', lbl: 'Cloud-based — no app to install', color: '#7C3AED' },
+  ]
 
   return (
     <>
@@ -512,6 +549,17 @@ export default function LearnMore() {
           <div className="lmr-hero-grid" />
           <div className="lmr-hero-glow" />
           <div className="lmr-hero-body">
+
+            {/* Founding-promo urgency badge — only rendered while spots
+                remain, so it never shows stale scarcity messaging after
+                the launch batch is full. */}
+            {promoActive && (
+              <div className="lmr-badge">
+                <span className="lmr-badge-dot" />
+                Only {remaining} founding spot{remaining !== 1 ? 's' : ''} left — {founding.bonusCredits} free SMS credits
+              </div>
+            )}
+
             <h1 className="lmr-h1">
               Your church deserves<br /><em>software that works.</em>
             </h1>
@@ -522,7 +570,9 @@ export default function LearnMore() {
             </p>
             <div className="lmr-hero-btns">
               <a href="/register" className="lmr-btn-main">
-                Start free — 200 SMS included <ArrowRight size={16} />
+                {promoActive
+                  ? <>Start free — {founding.bonusCredits} SMS included <ArrowRight size={16} /></>
+                  : <>Start free — 30-day trial <ArrowRight size={16} /></>}
               </a>
               <a href="/login" className="lmr-btn-ghost">
                 Sign into your account
@@ -578,12 +628,7 @@ export default function LearnMore() {
         {/* ── STATS STRIP ── */}
         <div className="lmr-stats">
           <div className="lmr-stats-g">
-            {[
-              { val: '3 plans',   lbl: 'Starting at GHS 200 / month',    color: '#4F46E5' },
-              { val: 'MoMo',      lbl: 'Mobile Money giving built in',    color: '#059669' },
-              { val: '200 SMS',   lbl: 'Free credits when you register',  color: '#D97706' },
-              { val: '100%',      lbl: 'Cloud-based — no app to install', color: '#7C3AED' },
-            ].map(({ val, lbl, color }, i) => (
+            {statsData.map(({ val, lbl, color }, i) => (
               <div key={i} className="lmr-stat">
                 <div className="lmr-stat-val" style={{ color }}>{val}</div>
                 <div className="lmr-stat-lbl">{lbl}</div>
@@ -1064,8 +1109,10 @@ export default function LearnMore() {
               Let MinistryOS handle <em>the rest.</em>
             </h2>
             <p className="lmr-cta-body">
-              Register today and get 200 free SMS credits. No credit card needed to start.
-              Your first branch is included. You can be live before Sunday.
+              {promoActive
+                ? `Register today and get ${founding.bonusCredits} free SMS credits — only ${remaining} founding spot${remaining !== 1 ? 's' : ''} left. No credit card needed to start.`
+                : `Register today and start your 30-day free trial with ${STANDARD_TRIAL_SMS_FALLBACK} free SMS credits included. No credit card needed to start.`}
+              {' '}Your first branch is included. You can be live before Sunday.
             </p>
             <div className="lmr-cta-btns">
               <a href="/register" className="lmr-cta-primary">
