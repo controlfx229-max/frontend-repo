@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { fmtDate } from '../../utils/dates'
 
 // ─── AUTOMATION TYPE CONFIG ──────────────────
 const TYPE_CONFIG = {
@@ -35,8 +36,8 @@ const TYPE_CONFIG = {
   },
   attendance_alert: {
     icon:  Bell,
-    color: '#7C3AED',
-    bg:    '#EDE9FE',
+    color: '#2563EB',
+    bg:    '#DBEAFE',
     label: 'Absence Alert',
     freq:  'Runs daily at 8:00 AM',
   },
@@ -56,7 +57,7 @@ const timeAgo = (date) => {
   if (diff < 60)    return 'Just now'
   if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return new Date(date).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })
+  return fmtDate(date, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // ─── EDIT AUTOMATION MODAL ───────────────────

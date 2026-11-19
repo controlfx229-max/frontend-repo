@@ -7,6 +7,7 @@ import {
   UserCheck, HandCoins, CreditCard, AlertCircle, ClipboardList
 } from 'lucide-react'
 import Logo from '../../components/Logo'
+import { ROUTE_PERMISSIONS } from '../../utils/access'
 
 const FULL_ACCESS_STATUSES = ['trial', 'active', 'pending_approval']
 const isRestricted = !!status && !FULL_ACCESS_STATUSES.includes(status)
@@ -39,11 +40,14 @@ const STATUS_LABELS = {
 }
 
 export default function Sidebar({ onClose }) {
-  const { user, logout } = useAuth()
+  const { user, logout, can } = useAuth()
 
   const status      = user?.subscriptionStatus
   const isRestricted = !FULL_ACCESS_STATUSES.includes(status)
-  const navItems    = isRestricted ? billingOnlyItems : allNavItems
+  // Only show what this role may open (same rules the server enforces).
+  const allowed     = (to) => can(...(ROUTE_PERMISSIONS[to] || []))
+  const navItems    = (isRestricted ? billingOnlyItems : allNavItems).filter(i => allowed(i.to))
+  const showBilling = !isRestricted && allowed('/billing')
 
   return (
     <aside className="sidebar">
@@ -84,7 +88,7 @@ export default function Sidebar({ onClose }) {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {!isRestricted && (
+        {!isRestricted && navItems.length > 0 && (
           <p className="sidebar-nav-label">Main Menu</p>
         )}
 
@@ -103,7 +107,7 @@ export default function Sidebar({ onClose }) {
         ))}
 
         {/* Show billing link in full nav too */}
-        {!isRestricted && (
+        {showBilling && (
           <>
             <p className="sidebar-nav-label" style={{ marginTop: 'var(--space-2)' }}>Account</p>
             <NavLink

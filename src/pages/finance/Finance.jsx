@@ -9,12 +9,11 @@ import {
 import Modal from '../../components/ui/Modal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
+import { formatMoney, getCurrencyCode } from '../../utils/currency'
+import { fmtDate, todayISO } from '../../utils/dates'
 
 // ─── HELPERS ─────────────────────────────────
-const formatGHS = (amount) =>
-  `GHS ${parseFloat(amount || 0).toLocaleString('en-GH', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2
-  })}`
+const formatGHS = (v) => formatMoney(v)   // legacy name; formats in the church's currency
 
 // ─── INCOME CONSTANTS ─────────────────────────
 const OFFERING_TYPES = [
@@ -28,7 +27,7 @@ const OFFERING_TYPES = [
 ]
 
 const TYPE_COLORS = {
-  tithe:          { color: '#4F46E5', bg: '#EEF2FF' },
+  tithe:          { color: '#2563EB', bg: '#DBEAFE' },
   offering:       { color: '#0891B2', bg: '#E0F2FE' },
   thanksgiving:   { color: '#D97706', bg: '#FEF3C7' },
   building_fund:  { color: '#DC2626', bg: '#FEE2E2' },
@@ -81,7 +80,7 @@ function RecordOfferingForm({ api, onSuccess, onClose }) {
     offeringType: 'tithe', amount: '', paymentMethod: 'cash',
     momoNetwork: '', reference: '', memberId: '', serviceId: '',
     isAnonymous: false, notes: '',
-    date: new Date().toISOString().split('T')[0]
+    date: todayISO()
   })
 
   useEffect(() => {
@@ -134,7 +133,7 @@ function RecordOfferingForm({ api, onSuccess, onClose }) {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Amount (GHS) *</label>
+            <label className="form-label">Amount ({getCurrencyCode()}) *</label>
             <input name="amount" type="number" step="0.01" min="0"
               value={form.amount} onChange={handleChange} className="form-input" placeholder="0.00" />
           </div>
@@ -194,7 +193,7 @@ function RecordOfferingForm({ api, onSuccess, onClose }) {
               <label className="form-label">Service (optional)</label>
               <select name="serviceId" value={form.serviceId} onChange={handleChange} className="form-input">
                 <option value="">No specific service</option>
-                {services.map(s => <option key={s._id} value={s._id}>{s.name} — {new Date(s.date).toLocaleDateString('en-GH')}</option>)}
+                {services.map(s => <option key={s._id} value={s._id}>{s.name} — {fmtDate(s.date)}</option>)}
               </select>
             </div>
           </div>
@@ -223,7 +222,7 @@ function RecordExpenseForm({ api, onSuccess, onClose }) {
   const [form, setForm] = useState({
     category: 'salary', description: '', amount: '',
     paymentMethod: 'cash', notes: '',
-    date: new Date().toISOString().split('T')[0]
+    date: todayISO()
   })
 
   const handleChange = (e) => {
@@ -262,7 +261,7 @@ function RecordExpenseForm({ api, onSuccess, onClose }) {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Amount (GHS) *</label>
+            <label className="form-label">Amount ({getCurrencyCode()}) *</label>
             <input name="amount" type="number" step="0.01" min="0"
               value={form.amount} onChange={handleChange} className="form-input" placeholder="0.00" />
           </div>
@@ -345,7 +344,7 @@ function TransactionRow({ offering }) {
   const config  = TYPE_COLORS[offering.offeringType] || {}
   const label   = OFFERING_TYPES.find(t => t.value === offering.offeringType)?.label
   const PayIcon = PAYMENT_ICONS[offering.paymentMethod] || Banknote
-  const formatDate = (d) => new Date(d).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatDate = (d) => fmtDate(d, { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div className="transaction-row">
@@ -376,7 +375,7 @@ function ExpenseRow({ expense }) {
   const color   = EXPENSE_COLORS[expense.category] || '#94A3B8'
   const label   = EXPENSE_TYPES.find(t => t.value === expense.category)?.label || expense.category
   const PayIcon = PAYMENT_ICONS[expense.paymentMethod] || Banknote
-  const formatDate = (d) => new Date(d).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatDate = (d) => fmtDate(d, { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div className="transaction-row">
@@ -521,7 +520,7 @@ export default function Finance() {
       <div className="finance-summary-grid">
         {[
           { label: 'Total This Week',  value: formatGHS(summary?.thisWeek),  icon: Wallet,       color: 'var(--primary)', trend: weekVariance, sublabel: 'vs last week' },
-          { label: 'Total This Month', value: formatGHS(summary?.thisMonth), icon: TrendingUp,   color: 'var(--success)', sublabel: new Date().toLocaleDateString('en-GH', { month: 'long', year: 'numeric' }) },
+          { label: 'Total This Month', value: formatGHS(summary?.thisMonth), icon: TrendingUp,   color: 'var(--success)', sublabel: new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) },
           { label: 'Total This Year',  value: formatGHS(summary?.thisYear),  icon: ArrowUpRight, color: 'var(--info)',    sublabel: new Date().getFullYear().toString() },
           { label: 'All Time Total',   value: formatGHS(summary?.allTime),   icon: Wallet,       color: 'var(--accent)',  sublabel: 'Since inception' },
         ].map(({ label, value, icon: Icon, color, trend, sublabel }) => (

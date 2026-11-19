@@ -43,7 +43,7 @@ const applyTheme = (theme, accent, fontSize) => {
 // ─── PROVIDER ─────────────────────────────────
 export function ThemeProvider({ children }) {
   const [theme, setTheme]       = useState(() => localStorage.getItem('mos_theme')    || 'light')
-  const [accent, setAccent]     = useState(() => localStorage.getItem('mos_accent')   || '#4F46E5')
+  const [accent, setAccent]     = useState(() => localStorage.getItem('mos_accent')   || '#059669')
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('mos_fontsize') || 'comfortable')
 
   // Apply on mount + whenever values change

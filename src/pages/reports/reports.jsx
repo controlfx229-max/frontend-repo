@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import useApi from '../../hooks/useApi'
+import { useAuth } from '../../context/AuthContext'
 import {
   Users, TrendingUp, Wallet, CalendarCheck,
   ArrowUpRight, ArrowDownRight, Building2,
-  Crown, BarChart3, FileDown, TrendingDown
+  Crown, BarChart3, FileDown, FileSpreadsheet, TrendingDown
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { sectionsToCSV, downloadCSV } from '../../utils/csv'
+import AttendanceRegister from './AttendanceRegister'
+import { formatMoney, getCurrencyCode } from '../../utils/currency'
+import { fmtDate } from '../../utils/dates'
 
 // ─── HELPERS ─────────────────────────────────
-const formatGHS = (amount) =>
-  `GHS ${parseFloat(amount || 0).toLocaleString('en-GH', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2
-  })}`
+const formatGHS = (v) => formatMoney(v)   // legacy name; formats in the church's currency
 
 const OFFERING_LABELS = {
   tithe:          'Tithe',
@@ -76,7 +78,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
   doc.setFont('helvetica', 'normal')
   doc.text('Church Reports & Analytics', MARGIN, 24)
   doc.text(
-    `Generated: ${new Date().toLocaleDateString('en-GH', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+    `Generated: ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`,
     MARGIN, 32
   )
   doc.setTextColor(0, 0, 0)
@@ -119,6 +121,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
   y = doc.lastAutoTable.finalY + 10
 
   // ── 2. FINANCIAL SUMMARY ───────────────────
+  if (finance) {
   sectionTitle('FINANCIAL SUMMARY')
   const net    = finance?.totals?.net    || 0
   const income = finance?.totals?.income || 0
@@ -126,7 +129,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
 
   autoTable(doc, {
     startY: y,
-    head: [['', 'Amount (GHS)']],
+    head: [['', `Amount (${getCurrencyCode()})`]],
     body: [
       ['Total Income (All Time)',   formatGHS(income)],
       ['Total Expenses (All Time)', formatGHS(expenses)],
@@ -145,7 +148,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
   if (finance?.byType?.length) {
     autoTable(doc, {
       startY: y,
-      head: [['Income Type', 'Transactions', 'Amount (GHS)']],
+      head: [['Income Type', 'Transactions', `Amount (${getCurrencyCode()})`]],
       body: finance.byType.map(t => [
         OFFERING_LABELS[t.type] || t.type,
         t.count,
@@ -163,7 +166,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
   if (finance?.byCategory?.length) {
     autoTable(doc, {
       startY: y,
-      head: [['Expense Category', 'Transactions', 'Amount (GHS)']],
+      head: [['Expense Category', 'Transactions', `Amount (${getCurrencyCode()})`]],
       body: finance.byCategory.map(c => [
         EXPENSE_LABELS[c.category] || c.category,
         c.count,
@@ -177,6 +180,8 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
     y = doc.lastAutoTable.finalY + 10
   }
 
+  }   // end finance (only for roles cleared for finance reports)
+
   // ── 3. ATTENDANCE ──────────────────────────
   if (y > 240) { doc.addPage(); y = 20 }   // new page if needed
 
@@ -187,7 +192,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
       head: [['Service', 'Date', 'Type', 'Present', 'Expected', 'Rate %']],
       body: attendance.services.map(s => [
         s.name,
-        new Date(s.date).toLocaleDateString('en-GH'),
+        fmtDate(s.date, { timeZone: 'UTC' }),   // service dates are calendar dates (UTC)
         s.type,
         s.present,
         s.expected,
@@ -214,7 +219,7 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
     sectionTitle('TOP GIVERS')
     autoTable(doc, {
       startY: y,
-      head: [['#', 'Member', 'Total Given (GHS)']],
+      head: [['#', 'Member', `Total Given (${getCurrencyCode()})`]],
       body: finance.topGivers.map((g, i) => [i + 1, g.name, formatGHS(g.total)]),
       theme: 'striped',
       headStyles:  { fillColor: [217, 119, 6], textColor: 255 },
@@ -236,7 +241,85 @@ const generatePDF = ({ overview, finance, attendance, members }) => {
     )
   }
 
-  doc.save(`MinistryOS-Report-${new Date().toLocaleDateString('en-GH').replace(/\//g, '-')}.pdf`)
+  doc.save(`MinistryOS-Report-${new Date().toLocaleDateString(undefined).replace(/\//g, '-')}.pdf`)
+}
+
+// ─── CSV BUILDER ──────────────────────────────
+// One CSV per tab (what you're looking at), made of small labelled tables.
+// Money is written as plain numbers so Excel/Sheets can add it up.
+const buildCSVSections = (tab, { overview, finance, attendance, members }) => {
+  const cur = getCurrencyCode()
+  const amountHead = `Amount (${cur})`
+  const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '')
+
+  if (tab === 'overview' && overview) {
+    return [
+      { title: 'Members & services', headers: ['Metric', 'Value'], rows: [
+        ['Total Members', overview.members.total],
+        ['Active Members', overview.members.active],
+        ['Inactive Members', overview.members.inactive],
+        ['New Converts', overview.members.newConverts],
+        ['Visitors', overview.members.visitors],
+        ['New Members This Month', overview.members.newThisMonth],
+        ['Services Recorded', overview.services.total],
+        ['Services This Month', overview.services.thisMonth],
+        ['Departments', overview.structure.departments],
+        ['Cell Groups', overview.structure.cellGroups],
+      ] },
+      ...(overview.finance ? [{ title: 'Finance', headers: ['Metric', amountHead], rows: [
+        ['Income This Year', overview.finance.thisYear],
+        ['Income This Month', overview.finance.thisMonth],
+        ['Expenses This Year', overview.finance.expensesYear],
+        ['Expenses This Month', overview.finance.expensesMonth],
+        ['Net This Year', overview.finance.netYear],
+        ['Net This Month', overview.finance.netMonth],
+      ] }] : []),
+    ]
+  }
+
+  if (tab === 'members' && members) {
+    return [
+      { title: 'Members by gender', headers: ['Gender', 'Members'],
+        rows: (members.byGender || []).map(r => [r._id || 'Not set', r.count]) },
+      { title: 'Members by status', headers: ['Status', 'Members'],
+        rows: (members.byStatus || []).map(r => [r._id || 'Not set', r.count]) },
+      { title: 'Members by department', headers: ['Department', 'Members'],
+        rows: (members.byDept || []).map(r => [r.name || 'Unassigned', r.count]) },
+      { title: 'New members per month', headers: ['Month', 'New members'],
+        rows: (members.monthlyJoins || []).map(r => [r.month, r.count]) },
+    ]
+  }
+
+  if (tab === 'attendance' && attendance) {
+    return [
+      { title: 'Recent services', headers: ['Service', 'Date', 'Type', 'Present', 'Expected', 'Rate %'],
+        rows: (attendance.services || []).map(s => [s.name, day(s.date), s.type, s.present, s.expected, s.rate]) },
+      { title: 'Top attenders', headers: ['Member', 'Member ID', 'Times present'],
+        rows: (attendance.topAttenders || []).map(a => [a.name, a.memberId, a.count]) },
+    ]
+  }
+
+  if (tab === 'finance' && finance) {
+    return [
+      { title: 'Summary (all time)', headers: ['Item', amountHead], rows: [
+        ['Total Income', finance.totals?.income || 0],
+        ['Total Expenses', finance.totals?.expenses || 0],
+        ['Net Balance', finance.totals?.net || 0],
+      ] },
+      { title: 'Income by type', headers: ['Income type', 'Transactions', amountHead],
+        rows: (finance.byType || []).map(t => [OFFERING_LABELS[t.type] || t.type, t.count, t.total]) },
+      { title: 'Expenses by category', headers: ['Category', 'Transactions', amountHead],
+        rows: (finance.byCategory || []).map(c => [EXPENSE_LABELS[c.category] || c.category, c.count, c.total]) },
+      { title: 'Top givers', headers: ['#', 'Member', amountHead],
+        rows: (finance.topGivers || []).map((g, i) => [i + 1, g.name, g.total]) },
+      { title: 'Income per month', headers: ['Month', 'Transactions', amountHead],
+        rows: (finance.monthlyIncome || []).map(m => [m.month, m.count, m.total]) },
+      { title: 'Expenses per month', headers: ['Month', 'Transactions', amountHead],
+        rows: (finance.monthlyExpenses || []).map(m => [m.month, m.count, m.total]) },
+    ]
+  }
+
+  return []
 }
 
 // ─── OVERVIEW STAT CARD ───────────────────────
@@ -334,7 +417,7 @@ function BarChart({ data, valueKey, labelKey, color = 'var(--primary)', formatVa
 
 // ─── DONUT CHART ──────────────────────────────
 function DonutChart({ data, total }) {
-  const colors = ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--info)', '#7C3AED']
+  const colors = ['var(--primary)', '#2563EB', '#C9973F', '#EF4444', '#0EA5E9', '#64748B']
   let cumulative = 0
 
   const segments = data.map((item, i) => {
@@ -393,7 +476,7 @@ function AttendanceTable({ services }) {
           {services.map((s, i) => (
             <tr key={i}>
               <td style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)' }}>{s.name}</td>
-              <td>{new Date(s.date).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+              <td>{fmtDate(s.date, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</td>
               <td>
                 <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--primary-light)', color: 'var(--primary)' }}>
                   {s.type.charAt(0).toUpperCase() + s.type.slice(1)}
@@ -455,8 +538,12 @@ function TopList({ items, valueFormatter, emptyMsg }) {
 }
 
 // ─── MAIN REPORTS PAGE ────────────────────────
-export default function Reports() {
-  const [activeTab, setActiveTab]   = useState('overview')
+function AdminReports() {
+  const { can } = useAuth()
+  const showGeneral = can('reports.view')
+  const showFinance = can('reports.finance')
+
+  const [activeTab, setActiveTab]   = useState(showGeneral ? 'overview' : 'finance')
   const [overview, setOverview]     = useState(null)
   const [attendance, setAttendance] = useState(null)
   const [finance, setFinance]       = useState(null)
@@ -465,11 +552,11 @@ export default function Reports() {
   const [pdfLoading, setPdfLoading] = useState(false)
 
   const TABS = [
-    { id: 'overview',   label: 'Overview',   icon: BarChart3     },
-    { id: 'members',    label: 'Members',    icon: Users         },
-    { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-    { id: 'finance',    label: 'Finance',    icon: Wallet        },
-  ]
+    { id: 'overview',   label: 'Overview',   icon: BarChart3,     show: showGeneral },
+    { id: 'members',    label: 'Members',    icon: Users,         show: showGeneral },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck, show: showGeneral },
+    { id: 'finance',    label: 'Finance',    icon: Wallet,        show: showFinance },
+  ].filter(t => t.show)
 
   const { api, branchReady } = useApi()
 
@@ -477,11 +564,13 @@ export default function Reports() {
     if (!branchReady) return
     setLoading(true)
     try {
+      // Only ask for what this role may see (the server refuses the rest anyway).
+      const none = { success: false }
       const [oData, aData, fData, mData] = await Promise.all([
-        api('/reports/overview'),
-        api('/reports/attendance'),
-        api('/reports/finance'),
-        api('/reports/members'),
+        showGeneral ? api('/reports/overview')   : none,
+        showGeneral ? api('/reports/attendance') : none,
+        showFinance ? api('/reports/finance')    : none,
+        showGeneral ? api('/reports/members')    : none,
       ])
       if (oData.success) setOverview(oData.overview)
       if (aData.success) setAttendance(aData.attendance)
@@ -489,19 +578,26 @@ export default function Reports() {
       if (mData.success) setMembersData(mData.members)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [api, branchReady])
+  }, [api, branchReady, showGeneral, showFinance])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const handleExportPDF = () => {
-    if (!overview || !finance || !attendance || !members) return
+    if (!overview || !attendance || !members) return
     setPdfLoading(true)
     try {
       generatePDF({ overview, finance, attendance, members })
     } finally {
       setPdfLoading(false)
     }
+  }
+
+  const handleExportCSV = () => {
+    const sections = buildCSVSections(activeTab, { overview, finance, attendance, members })
+    if (!sections.some(s => s.rows.length)) return
+    const stamp = new Date().toISOString().slice(0, 10)
+    downloadCSV(`ministryos-${activeTab}-${stamp}.csv`, sectionsToCSV(sections))
   }
 
   if (loading) return <LoadingSpinner message="Loading reports..." />
@@ -519,10 +615,19 @@ export default function Reports() {
           <h1 className="page-title">Reports & Analytics</h1>
           <p className="page-subtitle">Insights across your entire church</p>
         </div>
-        <button className="btn-primary" onClick={handleExportPDF} disabled={pdfLoading}>
-          <FileDown size={16} />
-          {pdfLoading ? 'Generating...' : 'Export PDF'}
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <button className="btn-ghost" onClick={handleExportCSV}
+            title="Download the current tab as a CSV file (opens in Excel / Google Sheets)">
+            <FileSpreadsheet size={16} />
+            Export CSV
+          </button>
+          {showGeneral && (
+            <button className="btn-primary" onClick={handleExportPDF} disabled={pdfLoading}>
+              <FileDown size={16} />
+              {pdfLoading ? 'Generating...' : 'Export PDF'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Tabs ── */}
@@ -547,15 +652,17 @@ export default function Reports() {
             <OverviewCard label="Active Members"     value={overview.members.active}
               sub={`${overview.members.inactive} inactive`}
               icon={TrendingUp} color="var(--success)" />
-            <OverviewCard label="Income This Year"   value={formatGHS(overview.finance.thisYear)}
-              sub={`${formatGHS(overview.finance.thisMonth)} this month`}
-              icon={Wallet} color="var(--success)" />
-            <OverviewCard label="Expenses This Year" value={formatGHS(overview.finance.expensesYear)}
-              sub={`${formatGHS(overview.finance.expensesMonth)} this month`}
-              icon={TrendingDown} color="var(--danger)" />
-            <OverviewCard label="Net Balance (Year)" value={formatGHS(overview.finance.netYear)}
-              sub={overview.finance.netYear >= 0 ? 'Surplus' : 'Deficit'}
-              icon={BarChart3} color={overview.finance.netYear >= 0 ? 'var(--info)' : 'var(--danger)'} />
+            {overview.finance && <>
+              <OverviewCard label="Income This Year"   value={formatGHS(overview.finance.thisYear)}
+                sub={`${formatGHS(overview.finance.thisMonth)} this month`}
+                icon={Wallet} color="var(--success)" />
+              <OverviewCard label="Expenses This Year" value={formatGHS(overview.finance.expensesYear)}
+                sub={`${formatGHS(overview.finance.expensesMonth)} this month`}
+                icon={TrendingDown} color="var(--danger)" />
+              <OverviewCard label="Net Balance (Year)" value={formatGHS(overview.finance.netYear)}
+                sub={overview.finance.netYear >= 0 ? 'Surplus' : 'Deficit'}
+                icon={BarChart3} color={overview.finance.netYear >= 0 ? 'var(--info)' : 'var(--danger)'} />
+            </>}
             <OverviewCard label="Services Recorded"  value={overview.services.total}
               sub={`${overview.services.thisMonth} this month`}
               icon={CalendarCheck} color="var(--warning)" />
@@ -645,6 +752,7 @@ export default function Reports() {
               {attendance.avgRate}%
             </p>
           </div>
+          <AttendanceRegister />
           <div className="report-card">
             <div className="report-card-header"><h3>Recent Services — Attendance Breakdown</h3></div>
             {attendance.services?.length > 0
@@ -790,4 +898,32 @@ export default function Reports() {
 
     </div>
   )
+}
+
+// ─── CELL LEADER VIEW ─────────────────────────
+// A cell leader gets ONE report: the attendance register for their own cell
+// group(s) — who came, who missed, who needs a follow-up — with CSV/PDF export.
+// The server limits the data to their groups; nothing else is requested here.
+function CellReports() {
+  return (
+    <div className="reports-page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">My Cell Report</h1>
+          <p className="page-subtitle">Attendance for the members of your cell group — export it as CSV or PDF</p>
+        </div>
+      </div>
+      <div className="reports-content">
+        <AttendanceRegister />
+      </div>
+    </div>
+  )
+}
+
+// ─── ENTRY POINT ──────────────────────────────
+export default function Reports() {
+  const { can } = useAuth()
+  const churchWide = can('reports.view') || can('reports.finance')
+  if (!churchWide && can('reports.cell')) return <CellReports />
+  return <AdminReports />
 }

@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
     <LegalLayout
       title="Privacy Policy"
       tagline="How MinistryOS collects, uses, and protects the information your church and its members trust us with."
-      updated="25 July 2026"
+      updated="11 November 2026"
       sections={sections}
     >
       <section id="intro">
@@ -98,12 +98,19 @@ export default function PrivacyPolicy() {
               <tr><th>Provider</th><th>Purpose</th></tr>
             </thead>
             <tbody>
-              <tr><td>Cloud database hosting</td><td>Secure storage of your church's data</td></tr>
+              <tr><td>Cloud database and application hosting providers</td><td>Secure storage of your church's data and running the platform</td></tr>
               <tr><td>SMS gateway provider (e.g. Arkesel)</td><td>Delivering SMS messages your church sends through the platform</td></tr>
-              <tr><td>Mobile Money network</td><td>Verifying subscription and SMS bundle payments</td></tr>
+              <tr><td>Paystack Payments Ghana Limited</td><td>Processing online card and Mobile Money payments for subscriptions and SMS bundles. Card numbers and Mobile Money PINs are entered with Paystack and are never seen or stored by MinistryOS; we keep only the payment reference, amount, status and date.</td></tr>
+              <tr><td>Mobile Money networks</td><td>Carrying Mobile Money payments</td></tr>
             </tbody>
           </table>
         </div>
+        <p>
+          Some of our service providers (such as cloud hosting) may process and store data on servers
+          located outside Ghana. Where this happens, we use providers with appropriate security safeguards.
+          Churches are responsible for informing their members, and for obtaining any consent needed under
+          Ghana's Data Protection Act, 2012 (Act 843), before entering member data.
+        </p>
         <p>
           We may also disclose information if required by law, regulation, or a valid legal request from
           a competent authority in Ghana or another applicable jurisdiction.

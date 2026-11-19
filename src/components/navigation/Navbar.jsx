@@ -8,8 +8,10 @@ import {
   Flag, Repeat2, BookOpen, UserPlus, Settings as SettingsIcon
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { ROUTE_PERMISSIONS } from '../../utils/access'
 import { useBranch } from '../../context/BranchContext'
 import useApi from '../../hooks/useApi'
+import { fmtDate } from '../../utils/dates'
 
 
 // ── All navigable pages in the app ──
@@ -32,6 +34,12 @@ const APP_PAGES = [
 ]
 
 function SearchModal({ api, branchReady, onClose }) {
+  const { can } = useAuth()
+  // Only offer pages (and member results) this role is allowed to open.
+  const pageAllowed = (p) => p.path.startsWith('/members?add')
+    ? can('members.create')
+    : can(...(ROUTE_PERMISSIONS[p.path.split('?')[0]] || []))
+  const canSearchMembers = can('members.view')
   const [query, setQuery]           = useState('')
   const [memberResults, setMembers] = useState([])
   const [pageResults, setPages]     = useState([])
@@ -61,13 +69,15 @@ function SearchModal({ api, branchReady, onClose }) {
 
     // ── Page search (instant, no API) ──
     const matchedPages = APP_PAGES.filter(p =>
-      p.label.toLowerCase().includes(q) ||
-      p.keywords.some(k => k.includes(q))
+      pageAllowed(p) && (
+        p.label.toLowerCase().includes(q) ||
+        p.keywords.some(k => k.includes(q))
+      )
     ).slice(0, 4)
     setPages(matchedPages)
 
     // ── Member search (API) ──
-    if (!branchReady) return
+    if (!branchReady || !canSearchMembers) return
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
@@ -81,7 +91,8 @@ function SearchModal({ api, branchReady, onClose }) {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [query, api, branchReady])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, api, branchReady, canSearchMembers])
 
   const goTo = useCallback((path) => {
     onClose()
@@ -356,7 +367,7 @@ function NotificationsDropdown({ notifications, loading, onClose }) {
     if (diff < 60)    return 'Just now'
     if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-    return new Date(date).toLocaleDateString('en-GH', { day: 'numeric', month: 'short' })
+    return fmtDate(date, { day: 'numeric', month: 'short' })
   }
 
   const iconMap = {

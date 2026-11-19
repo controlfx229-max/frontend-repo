@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth, AuthProvider } from './context/AuthContext'
+import { ROUTE_PERMISSIONS, homePathFor } from './utils/access'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword  from './pages/auth/ResetPassword'
 import { BranchProvider } from './context/BranchContext'
@@ -34,6 +35,7 @@ import TwoFactorSetup    from './pages/auth/TwoFactorSetup'
 import TwoFactorVerify   from './pages/auth/TwoFactorVerify'
 import BackupCodeVerify  from './pages/auth/BackupCodeVerify'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import Contact from './pages/legal/Contact'
 import TermsOfService from './pages/legal/TermsOfService'
 import CookiePolicy from './pages/legal/CookiePolicy'
 import RefundPolicy from './pages/legal/RefundPolicy'
@@ -91,6 +93,39 @@ function RequireAuth({ children }) {
   }
 
   return children
+}
+
+// ─────────────────────────────────────────────
+// GUARD: Requires a permission (role-based access control)
+// A user without it is sent to the first screen they ARE
+// allowed to open — never shown a half-working page.
+// Mirrors the server: the API enforces the same rule.
+// ─────────────────────────────────────────────
+function RequirePermission({ path, children }) {
+  const { user, loading, can } = useAuth()
+
+  if (loading) return <AppLoading />
+  if (user?.role === 'PLATFORM_OWNER') return children
+
+  const needed = ROUTE_PERMISSIONS[path] || []
+  if (needed.length === 0 || can(...needed)) return children
+
+  const home = homePathFor(can)
+  return <Navigate to={home} replace />
+}
+
+function NoAccess() {
+  const { logout } = useAuth()
+  return (
+    <div style={{ maxWidth: 480, margin: '15vh auto', padding: 24, textAlign: 'center' }}>
+      <h2 style={{ marginBottom: 8 }}>No access yet</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
+        Your account doesn't have access to any part of MinistryOS yet.
+        Please ask your church Super Admin to set up your role.
+      </p>
+      <button className="btn-outline" onClick={() => logout()}>Sign out</button>
+    </div>
+  )
 }
 
 // ─────────────────────────────────────────────
@@ -267,6 +302,7 @@ function AppRoutes() {
 <Route path="/terms-of-service" element={<TermsOfService />} />
 <Route path="/cookie-policy" element={<CookiePolicy />} />
 <Route path="/refund-policy" element={<RefundPolicy />} />
+<Route path="/contact" element={<Contact />} />
 <Route path="/acceptable-use-policy" element={<AcceptableUsePolicy />} />
 <Route path="/data-security" element={<DataSecurityPolicy />} />
 
@@ -299,7 +335,7 @@ function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route path="/billing" element={<Billing />} />
+        <Route path="/billing" element={<RequirePermission path="/billing"><Billing /></RequirePermission>} />
       </Route>
 
       {/* ── CHURCH APP ────────────────────────── */}
@@ -318,20 +354,21 @@ function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route path="/dashboard"      element={<Dashboard />} />
-        <Route path="/members"        element={<Members />} />
-        <Route path="/members/:id"    element={<MemberProfile />} />
-        <Route path="/attendance"     element={<Attendance />} />
-        <Route path="/finance"        element={<Finance />} />
-        <Route path="/communications" element={<Communications />} />
-        <Route path="/departments"    element={<Departments />} />
-        <Route path="/events"         element={<Events />} />
-        <Route path="/reports"        element={<Reports />} />
-        <Route path="/audit"          element={<AuditLog />} />
-        <Route path="/settings"       element={<Settings />} />
-        <Route path="/visitors"       element={<Visitors />} />
-        <Route path="/pledges"        element={<Pledges />} />
-        <Route path="/automations"    element={<Automations />} />
+        <Route path="/dashboard"      element={<RequirePermission path="/dashboard"><Dashboard /></RequirePermission>} />
+        <Route path="/members"        element={<RequirePermission path="/members"><Members /></RequirePermission>} />
+        <Route path="/members/:id"    element={<RequirePermission path="/members"><MemberProfile /></RequirePermission>} />
+        <Route path="/attendance"     element={<RequirePermission path="/attendance"><Attendance /></RequirePermission>} />
+        <Route path="/finance"        element={<RequirePermission path="/finance"><Finance /></RequirePermission>} />
+        <Route path="/communications" element={<RequirePermission path="/communications"><Communications /></RequirePermission>} />
+        <Route path="/departments"    element={<RequirePermission path="/departments"><Departments /></RequirePermission>} />
+        <Route path="/events"         element={<RequirePermission path="/events"><Events /></RequirePermission>} />
+        <Route path="/reports"        element={<RequirePermission path="/reports"><Reports /></RequirePermission>} />
+        <Route path="/audit"          element={<RequirePermission path="/audit"><AuditLog /></RequirePermission>} />
+        <Route path="/settings"       element={<RequirePermission path="/settings"><Settings /></RequirePermission>} />
+        <Route path="/visitors"       element={<RequirePermission path="/visitors"><Visitors /></RequirePermission>} />
+        <Route path="/pledges"        element={<RequirePermission path="/pledges"><Pledges /></RequirePermission>} />
+        <Route path="/automations"    element={<RequirePermission path="/automations"><Automations /></RequirePermission>} />
+        <Route path="/no-access"      element={<NoAccess />} />
       </Route>
 
       {/* ── CATCH-ALL ─────────────────────────── */}

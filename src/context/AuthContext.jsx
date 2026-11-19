@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { setActiveCurrency } from '../utils/currency'
 
 const AuthContext = createContext(null)
 
@@ -8,6 +9,10 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [token, setToken]     = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Keep money formatting in sync with the signed-in church's currency.
+  // Login stores a flat `currency`; /auth/me returns it on the populated org.
+  setActiveCurrency(user?.currency || user?.organizationId?.currency)
 
   // ── Clear everything and redirect, with optional message ─
   // The message (e.g. "Account suspended") is stashed in localStorage
@@ -68,6 +73,16 @@ export function AuthProvider({ children }) {
     .catch(() => null) // silent fail — stale session still works
     .finally(() => setLoading(false))
   }, [logout])
+
+  // ── Permissions ───────────────────────────────
+  // The server sends the user's permission list at login and on every /auth/me refresh
+  // (server/config/permissions.js is the single source of truth). Fails closed:
+  // no list = no access.
+  const can = useCallback((...perms) => {
+    const list = user?.permissions
+    if (!Array.isArray(list)) return false
+    return perms.some(p => list.includes(p))
+  }, [user])
 
   // ── Save login ────────────────────────────────
   const login = (tokenValue, userData) => {
@@ -143,7 +158,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, token, loading,
       login, logout,
-      apiFetch
+      apiFetch, can
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,0 +1,9 @@
+.mx.ft { background: var(--mx-ink); color: rgba(255,255,255,.7); padding: 72px 32px 32px; }
+.mx .ft-grid { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(240px, 1.4fr) repeat(2, minmax(150px, 1fr)); gap: 48px; }
+.mx .ft-blurb { margin-top: 18px; font-size: 14.5px; line-height: 1.7; color: rgba(255,255,255,.55); max-width: 34ch; }
+.mx .ft h3 { font: 600 14px var(--mx-sans); color: #fff; margin-bottom: 16px; }
+.mx .ft li { margin-bottom: 11px; }
+.mx .ft li a { font-size: 14.5px; color: rgba(255,255,255,.64); text-decoration: none; transition: color .15s; }
+.mx .ft li a:hover { color: var(--mx-brass); }
+.mx .ft-base { max-width: 1240px; margin: 56px auto 0; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; font-size: 13px; color: rgba(255,255,255,.45); }
+@media (max-width: 760px) { .mx.ft { padding: 56px 20px 28px; } .ft-grid { grid-template-columns: 1fr 1fr; gap: 36px 24px; } .ft-grid > div { grid-column: 1 / -1; } }

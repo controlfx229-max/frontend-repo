@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Loader2, ArrowRight, Copy, Check } from 'lucide-react'
-import Logo from '../../components/Logo'
+import { Loader2, Copy, Check, TriangleAlert, ShieldCheck } from 'lucide-react'
+import { AuthShell, CodeField, FormError, SecuritySide, IconBadge } from '../../components/auth/AuthKit'
 
 export default function TwoFactorSetup() {
   const [qrCodeUrl,   setQrCodeUrl]   = useState('')
@@ -109,165 +109,63 @@ export default function TwoFactorSetup() {
   }
 
   return (
-    <div className="login-page">
-      <div className="login-brand">
-        <div className="login-brand-inner">
-          <Logo className="login-logo" size={48} showText={false} />
-          <p className="login-brand-sub">
-            The complete operating system for your church.
-          </p>
-          <div className="login-features">
-            {[
-              'Member & attendance management',
-              'Tithes, offerings & pledges',
-              'Smart automations & alerts',
-              'Real-time church insights',
-            ].map((f, i) => (
-              <div className="login-feature-item" key={i}
-                style={{ animationDelay: `${i * 100}ms` }}>
-                <span className="login-feature-dot" />
-                <span>{f}</span>
-              </div>
-            ))}
+    <AuthShell side={<SecuritySide />}>
+      {done ? (
+        /* ── BACKUP CODES SCREEN */
+        <div className="au-done">
+          <IconBadge icon={ShieldCheck} />
+          <h2 className="au-title">2FA enabled</h2>
+          <p>Save these backup codes somewhere safe. Each can only be used <strong>once</strong>.</p>
+          <div className="au-note">
+            <TriangleAlert size={18} strokeWidth={1.6} aria-hidden="true" />
+            <p>You will not see these codes again.</p>
           </div>
-          <div className="login-circle login-circle-1" />
-          <div className="login-circle login-circle-2" />
+          <div className="au-codes">
+            {backupCodes.map((c, i) => <div key={i}>{c}</div>)}
+          </div>
+          <button onClick={handleFinish} className="mx-btn mx-btn-primary mx-btn-block" style={{ marginTop: 24 }}>
+            I've saved my codes, continue
+          </button>
         </div>
-      </div>
-
-      <div className="login-form-panel">
-        <div className="login-form-inner animate-fadeIn">
-
-          {done ? (
-            /* ── BACKUP CODES SCREEN ──────────────────────────────────────── */
-            <div className="twofa-backup-screen">
-              <div className="forgot-success-icon">🔐</div>
-              <h2>2FA Enabled!</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>
-                Save these backup codes somewhere safe.
-                Each can only be used <strong>once</strong>.
-              </p>
-              <p style={{ color: '#ef4444', fontSize: '13px', marginBottom: '20px' }}>
-                ⚠️ You will not see these again.
-              </p>
-
-              <div className="backup-codes-grid">
-                {backupCodes.map((c, i) => (
-                  <div key={i} className="backup-code-item">
-                    {c}
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={handleFinish}
-                className="btn-login"
-                style={{ marginTop: '24px' }}
-              >
-                I've saved my codes — Continue
-                <ArrowRight size={18} />
-              </button>
-            </div>
-
+      ) : (
+        /* ── SETUP SCREEN */
+        <>
+          <h2 className="au-title">Set up two-factor auth</h2>
+          <p className="au-sub">Scan this QR code with Google Authenticator.</p>
+          <FormError>{error}</FormError>
+          {fetching ? (
+            <div className="au-center"><Loader2 size={32} className="mx-spin" /></div>
           ) : (
-            /* ── SETUP SCREEN ─────────────────────────────────────────────── */
             <>
-              <div className="login-form-header">
-                <h2>Set up two-factor auth</h2>
-                <p>Scan this QR code with Google Authenticator.</p>
-              </div>
-
-              {error && (
-                <div className="login-error animate-slideUp">{error}</div>
-              )}
-
-              {fetching ? (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <Loader2 size={32} className="spin" color="var(--primary)" />
+              {qrCodeUrl && (
+                <div className="au-qr">
+                  <img src={qrCodeUrl} alt="Scan with Google Authenticator" />
                 </div>
-              ) : (
-                <>
-                  {/* ── QR CODE IMAGE ────────────────────────────────────── */}
-                  {qrCodeUrl && (
-                    <div className="twofa-qr-wrapper">
-                      <img
-                        src={qrCodeUrl}
-                        alt="Scan with Google Authenticator"
-                        className="twofa-qr-image"
-                      />
-                    </div>
-                  )}
-
-                  {/* ── MANUAL KEY FALLBACK ──────────────────────────────── */}
-                  <div className="twofa-manual-key">
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                      Can't scan? Enter this key manually:
-                    </p>
-                    <div className="twofa-key-row">
-                      <code className="twofa-key-text">{manualKey}</code>
-                      <button
-                        type="button"
-                        onClick={handleCopy}
-                        className="twofa-copy-btn"
-                      >
-                        {copied
-                          ? <Check size={14} color="#22c55e" />
-                          : <Copy size={14} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* ── CONFIRM CODE FORM ────────────────────────────────── */}
-                  <form onSubmit={handleConfirm} className="login-form"
-                    style={{ marginTop: '24px' }}>
-                    <div className="form-group">
-                      <label className="form-label">
-                        Enter the 6-digit code from the app
-                      </label>
-                      <input
-                        type="text"
-                        value={code}
-                        onChange={(e) => {
-                          setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                          setError('')
-                        }}
-                        placeholder="000000"
-                        className="form-input twofa-code-input"
-                        maxLength={6}
-                        required
-                        autoComplete="one-time-code"
-                        autoFocus
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn-login"
-                      disabled={loading || code.length !== 6}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 size={18} className="spin" />
-                          Verifying...
-                        </>
-                      ) : (
-                        <>
-                          Confirm & Enable 2FA
-                          <ArrowRight size={18} />
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </>
               )}
+              <div className="fd">
+                <p className="fd-hint">Can't scan? Enter this key manually:</p>
+                <div className="au-keyrow">
+                  <code>{manualKey}</code>
+                  <button type="button" onClick={handleCopy} aria-label="Copy key">
+                    {copied ? <Check size={16} strokeWidth={2.2} /> : <Copy size={16} strokeWidth={1.8} />}
+                  </button>
+                </div>
+              </div>
+              <form onSubmit={handleConfirm} className="au-form" style={{ marginTop: 26 }}>
+                <CodeField
+                  label="Enter the 6-digit code from the app" name="code" type="text" value={code}
+                  onChange={(e) => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setError('') }}
+                  placeholder="000000" maxLength={6} required autoComplete="one-time-code" autoFocus inputMode="numeric"
+                />
+                <button type="submit" className="mx-btn mx-btn-primary mx-btn-block" disabled={loading || code.length !== 6}>
+                  {loading ? <><Loader2 size={18} className="mx-spin" /> Verifying</> : 'Confirm and enable 2FA'}
+                </button>
+              </form>
             </>
           )}
-
-          <p className="login-footer">
-            © 2026 EM Control IT Solutions · MinistryOS
-          </p>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+      <p className="au-legal">© 2026 EM Control IT Solutions. MinistryOS.</p>
+    </AuthShell>
   )
 }

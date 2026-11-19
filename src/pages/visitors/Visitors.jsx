@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
+import { fmtDate, todayISO } from '../../utils/dates'
 
 // ─── CONSTANTS ────────────────────────────────
 const FOLLOW_UP_STYLES = {
@@ -52,7 +53,7 @@ function AddVisitorForm({ api, onSuccess, onClose }) {
     occupation:   '',
     serviceType:  'sunday_service',
     howTheyHeard: 'walked_in',
-    visitDate:    new Date().toISOString().split('T')[0],
+    visitDate:    todayISO(),
     notes:        ''
   })
 
@@ -183,7 +184,7 @@ function FollowUpModal({ visitor, api, onSuccess, onClose }) {
   const [form, setForm] = useState({
     followUpStatus: visitor.followUpStatus || 'pending',
     followUpNote:   visitor.followUpNote   || '',
-    followUpDate:   new Date().toISOString().split('T')[0]
+    followUpDate:   todayISO()
   })
 
   const handleSubmit = async (e) => {
@@ -247,7 +248,7 @@ function FollowUpModal({ visitor, api, onSuccess, onClose }) {
 // ─── VISITOR CARD ─────────────────────────────
 function VisitorCard({ visitor, onFollowUp, onConvert, onDelete }) {
   const status  = FOLLOW_UP_STYLES[visitor.followUpStatus] || FOLLOW_UP_STYLES.pending
-  const formatDate = (d) => new Date(d).toLocaleDateString('en-GH', {
+  const formatDate = (d) => fmtDate(d, {
     day: 'numeric', month: 'short', year: 'numeric'
   })
 
@@ -416,7 +417,7 @@ export default function Visitors() {
     setConverting(true)
     try {
       const data = await api(`/visitors/${convertTarget._id}/convert`, { method: 'POST' })
-      if (!data.success) { showSuccess('Conversion failed.'); return }
+      if (!data.success) { showSuccess(data.message || 'Conversion failed.'); setConvertTarget(null); return }
       setConvertTarget(null)
       fetchVisitors()
       fetchStats()

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import useApi from '../../hooks/useApi'
+import { useAuth } from '../../context/AuthContext'
 import {
   Plus, CheckCircle, Edit2, Trash2,
   ChevronLeft, ChevronRight, Calendar,
@@ -9,6 +10,7 @@ import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
+import { fmtDate, todayISO, toDateInput } from '../../utils/dates'
 
 // ─── CONSTANTS ────────────────────────────────
 const EVENT_TYPE_LABELS = {
@@ -34,7 +36,7 @@ const EVENT_TYPE_LABELS = {
 }
 
 const EVENT_TYPE_COLORS = {
-  sunday_service:     '#4F46E5',
+  sunday_service:     '#2563EB',
   midweek_service:    '#0891B2',
   prayer_meeting:     '#7C3AED',
   vigil:              '#1E40AF',
@@ -79,7 +81,7 @@ const STATUS_CONFIG = {
 const STATUS_CYCLE = ['absent', 'present', 'late', 'excused', 'visitor']
 
 const formatDate = (date, opts = {}) =>
-  new Date(date).toLocaleDateString('en-GH', {
+  fmtDate(date, {
     day: 'numeric', month: 'short', year: 'numeric', ...opts
   })
 
@@ -94,8 +96,8 @@ function EventForm({ api, departments, editing, onSuccess, onClose }) {
     title:              editing?.title              || '',
     eventType:          editing?.eventType          || 'sunday_service',
     description:        editing?.description        || '',
-    startDate:          editing ? new Date(editing.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    endDate:            editing ? new Date(editing.endDate).toISOString().split('T')[0]   : new Date().toISOString().split('T')[0],
+    startDate:          editing ? toDateInput(editing.startDate) : todayISO(),
+    endDate:            editing ? toDateInput(editing.endDate)   : todayISO(),
     startTime:          editing?.startTime          || '',
     endTime:            editing?.endTime            || '',
     location:           editing?.location           || '',
@@ -103,11 +105,11 @@ function EventForm({ api, departments, editing, onSuccess, onClose }) {
     expectedAttendance: editing?.expectedAttendance || '',
     status:             editing?.status             || 'upcoming',
     priority:           editing?.priority           || 'normal',
-    color:              editing?.color              || '#4F46E5',
+    color:              editing?.color              || '#059669',
     isRecurring:        editing?.isRecurring        || false,
     recurringPattern:   editing?.recurringPattern   || 'weekly',
     recurringEndDate:   editing?.recurringEndDate
-      ? new Date(editing.recurringEndDate).toISOString().split('T')[0] : '',
+      ? toDateInput(editing.recurringEndDate) : '',
     notes: editing?.notes || '',
   })
 
@@ -119,7 +121,7 @@ function EventForm({ api, departments, editing, onSuccess, onClose }) {
 
   const handleTypeChange = (e) => {
     const type = e.target.value
-    setForm(prev => ({ ...prev, eventType: type, color: EVENT_TYPE_COLORS[type] || '#4F46E5' }))
+    setForm(prev => ({ ...prev, eventType: type, color: EVENT_TYPE_COLORS[type] || '#059669' }))
   }
 
   const handleSubmit = async (e) => {
@@ -545,13 +547,9 @@ function CalendarView({ events, currentDate, onEventClick }) {
 
   const getEventsForDay = (day) => {
     if (!day) return []
-    const cellStart = new Date(year, month, day)
-    const cellEnd   = new Date(year, month, day, 23, 59, 59)
-    return events.filter(e => {
-      const s  = new Date(e.startDate)
-      const en = new Date(e.endDate)
-      return s <= cellEnd && en >= cellStart
-    })
+    // Compare calendar days (YYYY-MM-DD) so a date-only event never slips a day for US users.
+    const cell = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    return events.filter(e => toDateInput(e.startDate) <= cell && toDateInput(e.endDate) >= cell)
   }
 
   return (
@@ -579,7 +577,7 @@ function CalendarView({ events, currentDate, onEventClick }) {
                   <div className="calendar-day-events">
                     {dayEvents.slice(0, 3).map((e, j) => (
                       <div key={j} className="calendar-event-pill"
-                        style={{ background: e.color || '#4F46E5' }}
+                        style={{ background: e.color || '#059669' }}
                         onClick={() => onEventClick(e)}
                         title={e.title}>
                         {e.startTime ? `${e.startTime} ` : ''}{e.title}
@@ -601,7 +599,8 @@ function CalendarView({ events, currentDate, onEventClick }) {
 
 // ─── EVENT CARD ───────────────────────────────
 function EventCard({ event, onEdit, onDelete, onTakeAttendance }) {
-  const typeColor    = EVENT_TYPE_COLORS[event.eventType] || '#4F46E5'
+  const { can } = useAuth()
+  const typeColor    = EVENT_TYPE_COLORS[event.eventType] || '#059669'
   const typeLabel    = EVENT_TYPE_LABELS[event.eventType]  || event.eventType
   const statusStyle  = STATUS_STYLES[event.status]         || STATUS_STYLES.upcoming
   const priorityInfo = PRIORITY_STYLES[event.priority]
@@ -637,24 +636,24 @@ function EventCard({ event, onEdit, onDelete, onTakeAttendance }) {
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 'var(--space-1)', flexShrink: 0 }}>
-            <button className="dept-edit-btn"
+            {can('attendance.mark') && <button className="dept-edit-btn"
               style={{ color: 'var(--success)', opacity: isFutureEvent ? 0.35 : 1, cursor: isFutureEvent ? 'not-allowed' : 'pointer' }}
               onClick={(e) => { e.stopPropagation(); if (!isFutureEvent) onTakeAttendance(event) }}
               disabled={isFutureEvent}
               title={isFutureEvent ? 'Cannot take attendance for a future service' : 'Take Attendance'}>
               <UserCheck size={14} />
-            </button>
-            <button className="dept-edit-btn"
+            </button>}
+            {can('events.manage') && <button className="dept-edit-btn"
               onClick={(e) => { e.stopPropagation(); onEdit(event) }}
               title="Edit">
               <Edit2 size={14} />
-            </button>
-            <button className="dept-edit-btn"
+            </button>}
+            {can('events.manage') && <button className="dept-edit-btn"
               style={{ color: 'var(--danger)' }}
               onClick={(e) => { e.stopPropagation(); onDelete(event) }}
               title="Delete">
               <Trash2 size={14} />
-            </button>
+            </button>}
           </div>
         </div>
 
@@ -723,7 +722,7 @@ function BirthdaySection({ api }) {
           🎂 Birthdays This Month
         </p>
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-          {now.toLocaleDateString('en-GH', { month: 'long' })}
+          {now.toLocaleDateString(undefined, { month: 'long' })}
         </span>
       </div>
 
@@ -766,7 +765,7 @@ function BirthdaySection({ api }) {
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{b.phone}</p>
               </div>
               <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
-                {new Date(b.dateOfBirth).toLocaleDateString('en-GH', { day: 'numeric', month: 'short' })}
+                {fmtDate(b.dateOfBirth, { day: 'numeric', month: 'short' })}
               </span>
             </div>
           ))}
@@ -779,6 +778,7 @@ function BirthdaySection({ api }) {
 // ─── MAIN PAGE ────────────────────────────────
 export default function Events() {
   const { api, branchReady } = useApi()
+  const { can } = useAuth()
   const [view, setView]                   = useState('list')
   const [events, setEvents]               = useState([])
   const [departments, setDepartments]     = useState([])
@@ -866,9 +866,9 @@ export default function Events() {
               <Calendar size={14} /> Calendar
             </button>
           </div>
-          <button className="btn-primary" onClick={() => { setEditingEvent(null); setShowModal(true) }}>
+          {can('events.manage') && <button className="btn-primary" onClick={() => { setEditingEvent(null); setShowModal(true) }}>
             <Plus size={16} /> New Event
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -919,7 +919,7 @@ export default function Events() {
               <ChevronLeft size={16} />
             </button>
             <h3 className="calendar-month-title">
-              {currentDate.toLocaleDateString('en-GH', { month: 'long', year: 'numeric' })}
+              {currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
             </h3>
             <button className="page-btn"
               onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>
@@ -940,7 +940,7 @@ export default function Events() {
             {loading ? <LoadingSpinner /> : events.length === 0 ? (
               <EmptyState icon={Calendar} title="No events yet"
                 message="Create your first church event or program."
-                action={{ label: '+ New Event', onClick: () => setShowModal(true) }} />
+                action={can('events.manage') ? { label: '+ New Event', onClick: () => setShowModal(true) } : undefined} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
                 {upcomingEvents.length > 0 && (
@@ -985,13 +985,13 @@ export default function Events() {
         {selectedEvent && (
           <div className="member-form">
             <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-start' }}>
-              <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: selectedEvent.color || '#4F46E5', flexShrink: 0 }} />
+              <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: selectedEvent.color || '#059669', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
                   {selectedEvent.title}
                 </p>
                 <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: (selectedEvent.color || '#4F46E5') + '18', color: selectedEvent.color || '#4F46E5' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: (selectedEvent.color || '#059669') + '18', color: selectedEvent.color || '#059669' }}>
                     {EVENT_TYPE_LABELS[selectedEvent.eventType]}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, ...STATUS_STYLES[selectedEvent.status] }}>
@@ -1020,15 +1020,15 @@ export default function Events() {
             </div>
             <div className="form-actions">
               <button className="btn-outline" onClick={() => setSelectedEvent(null)}>Close</button>
-              <button className="btn-primary"
+              {can('attendance.mark') && <button className="btn-primary"
                 style={{ background: 'var(--success)', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}
                 onClick={() => { setAttendanceEvent(selectedEvent); setSelectedEvent(null) }}>
                 <UserCheck size={14} /> Take Attendance
-              </button>
-              <button className="btn-primary"
+              </button>}
+              {can('events.manage') && <button className="btn-primary"
                 onClick={() => { setEditingEvent(selectedEvent); setSelectedEvent(null); setShowModal(true) }}>
                 <Edit2 size={14} /> Edit
-              </button>
+              </button>}
             </div>
           </div>
         )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import useApi from '../../hooks/useApi'
+import { useAuth } from '../../context/AuthContext'
 import {
   Send, Clock, FileText, Users, CheckCircle,
   MessageSquare, Plus, Edit2, Trash2,
@@ -9,6 +10,7 @@ import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
+import { fmtDate } from '../../utils/dates'
 
 // ─── CONSTANTS ────────────────────────────────
 const AUDIENCE_OPTIONS = [
@@ -30,7 +32,7 @@ const MEMBER_STATUSES = [
 
 const TEMPLATE_CATEGORIES = {
   birthday:       { label: 'Birthday',       color: '#EC4899' },
-  event_reminder: { label: 'Event Reminder', color: '#4F46E5' },
+  event_reminder: { label: 'Event Reminder', color: '#2563EB' },
   follow_up:      { label: 'Follow-up',      color: '#D97706' },
   offering:       { label: 'Offering',       color: '#059669' },
   welcome:        { label: 'Welcome',        color: '#0891B2' },
@@ -52,10 +54,26 @@ const timeAgo = (date) => {
   if (m < 60)  return `${m}m ago`
   const h = Math.floor(m / 60)
   if (h < 24)  return `${h}h ago`
-  return new Date(date).toLocaleDateString('en-GH', { day: 'numeric', month: 'short' })
+  return fmtDate(date, { day: 'numeric', month: 'short' })
 }
 
-const SMS_LIMIT = 160
+// Messages can be up to MAX_SMS_CHARS long. Phones deliver long texts in several parts
+// (160 chars for one part, 153 per part when split; 70 / 67 if the text has emoji or
+// accents). One SMS credit is used per part, so we show the part count as you type.
+const MAX_SMS_CHARS = 1000
+const GSM_BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà"
+const GSM_EXT   = "^{}\\[~]|€\f"
+const smsInfo = (text = '') => {
+  const chars = [...text]
+  let units = 0, unicode = false
+  for (const ch of chars) {
+    if (GSM_BASIC.includes(ch)) units += 1
+    else if (GSM_EXT.includes(ch)) units += 2
+    else { unicode = true; break }
+  }
+  if (unicode) return { length: chars.length, unicode, parts: chars.length === 0 ? 0 : chars.length <= 70 ? 1 : Math.ceil(chars.length / 67) }
+  return { length: chars.length, unicode, parts: units === 0 ? 0 : units <= 160 ? 1 : Math.ceil(units / 153) }
+}
 
 // Polling config for post-send status confirmation
 const POLL_INTERVAL_MS = 2500
@@ -117,8 +135,9 @@ function TemplateForm({ api, editing, onSuccess, onClose }) {
         </div>
         <div className="form-group">
           <label className="form-label">Message Body *</label>
-          <textarea className="form-input" rows={5} value={form.body}
+          <textarea className="form-input" rows={5} value={form.body} maxLength={MAX_SMS_CHARS}
             onChange={e => setForm(p => ({ ...p, body: e.target.value }))} />
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{[...form.body].length} / {MAX_SMS_CHARS} characters</p>
         </div>
       </div>
       <div className="form-actions">
@@ -136,6 +155,8 @@ function ComposeTab({ api, branchReady }) {
   const [departments, setDepartments] = useState([])
   const [cellGroups, setCellGroups]   = useState([])
   const [templates, setTemplates]     = useState([])
+  const { can } = useAuth()
+  const cellOnly = !can('communications.manage') && can('communications.cell')   // cell leader: own members only
   const [preview, setPreview]         = useState(null)   // { count, names[] }
   const [previewLoading, setPreviewLoading] = useState(false)
   const [loading, setLoading]         = useState(false)   // true only while the initial POST /send is in flight
@@ -367,9 +388,11 @@ function ComposeTab({ api, branchReady }) {
           <label className="form-label">Send to</label>
           <select className="form-input" value={form.audienceType}
             onChange={e => handleFormChange('audienceType', e.target.value)}>
-            {AUDIENCE_OPTIONS.map(o => (
-              <option key={o.id} value={o.id}>{o.emoji} {o.label}</option>
-            ))}
+            {AUDIENCE_OPTIONS
+              .filter(o => !cellOnly || ['all', 'cell_group', 'status', 'inactive'].includes(o.id))
+              .map(o => (
+                <option key={o.id} value={o.id}>{o.emoji} {cellOnly && o.id === 'all' ? 'All my cell members' : o.label}</option>
+              ))}
           </select>
         </div>
 
@@ -451,11 +474,21 @@ function ComposeTab({ api, branchReady }) {
 
         <div className="form-group">
           <textarea className="form-input" rows={6} value={form.body}
+            maxLength={form.type === 'sms' ? MAX_SMS_CHARS : undefined}
             onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
             placeholder={`Type your message here. Use {{firstName}} for personalisation.`} />
-          <p style={{ fontSize: 11, color: form.body.length > SMS_LIMIT ? 'var(--danger)' : 'var(--text-muted)', marginTop: 4 }}>
-            {form.body.length} / {SMS_LIMIT} chars {form.type === 'sms' && form.body.length > SMS_LIMIT ? '— will split into multiple SMS' : ''}
-          </p>
+          {form.type === 'sms' ? (() => {
+            const info = smsInfo(form.body)
+            return (
+              <p style={{ fontSize: 11, color: info.length >= MAX_SMS_CHARS ? 'var(--danger)' : 'var(--text-muted)', marginTop: 4 }}>
+                {info.length} / {MAX_SMS_CHARS} characters · {info.parts} SMS part{info.parts === 1 ? '' : 's'}
+                {info.parts > 1 ? ` (uses ${info.parts} credits per recipient${preview?.count ? `, about ${info.parts * preview.count} in total` : ''})` : ''}
+                {info.unicode ? ' · emoji/accents shorten each part to 67 characters' : ''}
+              </p>
+            )
+          })() : (
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{form.body.length} characters</p>
+          )}
         </div>
       </div>
 
@@ -651,10 +684,11 @@ export default function Communications() {
   const { api, branchReady } = useApi()
   const [activeTab, setActiveTab] = useState('compose')
 
+  const { can } = useAuth()
   const TABS = [
     { id: 'compose',   label: 'Compose',   icon: Send      },
-    { id: 'history',   label: 'History',   icon: Clock     },
-    { id: 'templates', label: 'Templates', icon: FileText  },
+    { id: 'history',   label: can('communications.manage') ? 'History' : 'My messages', icon: Clock },
+    ...(can('communications.manage') ? [{ id: 'templates', label: 'Templates', icon: FileText }] : []),
   ]
 
   return (

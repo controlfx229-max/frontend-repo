@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
-  ArrowRight, ArrowLeft,
-  Loader2, Eye, EyeOff, CheckCircle,
-  Building2, User,
-  Users, CreditCard, Zap, BarChart2
+  ArrowRight, ArrowLeft, Loader2, Check, Gift, BadgeCheck, Building2, Mail, Phone, User, Lock,
+  Globe, Church, Users, CreditCard, Zap, ChartColumn, CalendarCheck, Activity,
 } from 'lucide-react'
-import Logo from '../../components/Logo'
+import { AuthShell, Field, SelectField, FormError } from '../../components/auth/AuthKit'
 
 const DENOMINATIONS = [
   'Pentecostal', 'Charismatic', 'Baptist', 'Methodist',
@@ -22,11 +20,11 @@ const COUNTRIES = [
   'Other'
 ]
 
-const FEATURES = [
-  { icon: Users,      text: 'Member & attendance management' },
-  { icon: CreditCard, text: 'Tithes, offerings & pledges'   },
-  { icon: Zap,        text: 'Smart automations & alerts'    },
-  { icon: BarChart2,  text: 'Real-time church insights'     },
+const POINTS = [
+  { icon: Users,       text: 'Full member management system'     },
+  { icon: CreditCard,  text: 'Attendance and offering tracking'  },
+  { icon: Zap,         text: 'Smart automations and alerts'      },
+  { icon: ChartColumn, text: 'Real-time church health insights'  },
 ]
 
 // Standard (non-founding) trial SMS credits — mirrors
@@ -36,30 +34,14 @@ const FEATURES = [
 const STANDARD_TRIAL_SMS_FALLBACK = 25
 
 // ─── STEP INDICATOR ──────────────────────────
-function StepIndicator({ current, total }) {
+function Steps({ current }) {
+  const steps = ['Church details', 'Admin account']
   return (
-    <div style={{
-      display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap'
-    }}>
-      {Array.from({ length: total }).map((_, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            background: i < current ? '#4F46E5' : i === current ? '#4F46E5' : '#E5E7EB',
-            border: `2px solid ${i < current ? '#4F46E5' : i === current ? '#4F46E5' : '#D1D5DB'}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '13px', fontWeight: 700, color: i <= current ? '#fff' : '#6B7280',
-            transition: 'all 0.3s ease', flexShrink: 0
-          }}>
-            {i < current ? <CheckCircle size={14} /> : <span>{i + 1}</span>}
-          </div>
-          {i < total - 1 && (
-            <div style={{
-              width: '16px', height: '2px',
-              background: i < current ? '#4F46E5' : '#D1D5DB',
-              transition: 'background 0.3s ease'
-            }} />
-          )}
+    <div className="au-steps" aria-label={`Step ${current + 1} of ${steps.length}`}>
+      {steps.map((label, i) => (
+        <div key={label} className={`au-step${i < current ? ' is-done' : ''}${i === current ? ' is-on' : ''}`}>
+          <i />
+          <span>{i < current && <Check size={14} strokeWidth={2.4} aria-hidden="true" />}{label}</span>
         </div>
       ))}
     </div>
@@ -69,276 +51,82 @@ function StepIndicator({ current, total }) {
 // ─── STEP 1: CHURCH DETAILS ──────────────────
 function StepChurch({ form, onChange, error }) {
   return (
-    <div>
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '12px',
-          background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: '12px'
-        }}>
-          <Building2 size={22} color="#4F46E5" />
+    <>
+      <h2 className="au-title">Church details</h2>
+      <p className="au-sub">Tell us about your church.</p>
+      <FormError>{error}</FormError>
+      <div className="au-form">
+        <Field label="Church name" name="churchName" icon={Church} value={form.churchName}
+          onChange={onChange} placeholder="e.g. Victory Chapel International" />
+        <div className="au-grid">
+          <SelectField label="Denomination" name="denomination" icon={Building2} value={form.denomination}
+            onChange={onChange} options={DENOMINATIONS} placeholder="Select denomination" />
+          <SelectField label="Country or region" name="country" icon={Globe} value={form.country}
+            onChange={onChange} options={COUNTRIES} placeholder="Select country" />
         </div>
-        <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#111827', margin: '0 0 4px', letterSpacing: '-0.3px' }}>
-          Church Details
-        </h2>
-        <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
-          Tell us about your church
-        </p>
-      </div>
-
-      {error && (
-        <div style={{
-          padding: '12px 16px', borderRadius: '10px', background: '#FEE2E2',
-          border: '1px solid #FECACA', color: '#991B1B', fontSize: '13px', fontWeight: 600,
-          marginBottom: '20px'
-        }}>
-          {error}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-            Church Name *
-          </label>
-          <input
-            name="churchName" value={form.churchName} onChange={onChange}
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: '10px',
-              border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit',
-              transition: 'border-color 0.2s'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#4F46E5'}
-            onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
-            placeholder="e.g. Victory Chapel International"
-          />
-        </div>
-
-        <div className="reg-grid-2">
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-              Denomination *
-            </label>
-            <select
-              name="denomination" value={form.denomination} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-            >
-              <option value="">Select denomination</option>
-              {DENOMINATIONS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-              Country/Region *
-            </label>
-            <select
-              name="country" value={form.country} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-            >
-              <option value="">Select country</option>
-              {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="reg-grid-2">
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-              Church Email *
-            </label>
-            <input
-              name="churchEmail" type="email" value={form.churchEmail} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-              placeholder="info@yourchurch.com"
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-              Church Phone *
-            </label>
-            <input
-              name="churchPhone" value={form.churchPhone} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-              placeholder="+1 (555) 000-0000"
-            />
-          </div>
+        <div className="au-grid">
+          <Field label="Church email" name="churchEmail" type="email" icon={Mail} value={form.churchEmail}
+            onChange={onChange} placeholder="info@yourchurch.com" />
+          <Field label="Church phone" name="churchPhone" icon={Phone} value={form.churchPhone}
+            onChange={onChange} placeholder="+233 24 000 0000" inputMode="tel" />
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
 // ─── STEP 2: ADMIN ACCOUNT ───────────────────
-function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agreed, setAgreed, foundingStatus }) {
-  const promoActive = foundingStatus?.promoActive
-  const remaining   = foundingStatus?.remaining
+function StepAdmin({ form, onChange, error, agreed, setAgreed, foundingStatus }) {
+  const promoActive  = foundingStatus?.promoActive
+  const remaining    = foundingStatus?.remaining
   const bonusCredits = foundingStatus?.bonusCredits || 200
 
   return (
-    <div>
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '12px',
-          background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: '12px'
-        }}>
-          <User size={22} color="#4F46E5" />
+    <>
+      <h2 className="au-title">Admin account</h2>
+      <p className="au-sub">Create your administrator login.</p>
+      <FormError>{error}</FormError>
+      <div className="au-form">
+        <Field label="Your full name" name="adminName" icon={User} value={form.adminName}
+          onChange={onChange} placeholder="e.g. Pastor Emmanuel Mensah" autoComplete="name" />
+        <div className="au-grid">
+          <Field label="Your email" name="adminEmail" type="email" icon={Mail} value={form.adminEmail}
+            onChange={onChange} placeholder="you@example.com" autoComplete="email" />
+          <Field label="Your phone" name="adminPhone" type="tel" icon={Phone} value={form.adminPhone}
+            onChange={onChange} placeholder="+233 24 000 0000" inputMode="tel" autoComplete="tel" />
         </div>
-        <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#111827', margin: '0 0 4px', letterSpacing: '-0.3px' }}>
-          Admin Account
-        </h2>
-        <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
-          Create your administrator login
-        </p>
-      </div>
-
-      {error && (
-        <div style={{
-          padding: '12px 16px', borderRadius: '10px', background: '#FEE2E2',
-          border: '1px solid #FECACA', color: '#991B1B', fontSize: '13px', fontWeight: 600,
-          marginBottom: '20px'
-        }}>
-          {error}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-            Your Full Name *
-          </label>
-          <input
-            name="adminName" value={form.adminName} onChange={onChange}
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: '10px',
-              border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-            }}
-            placeholder="e.g. Pastor Emmanuel Mensah"
-          />
+        <div className="au-grid">
+          <Field label="Password" name="adminPassword" type="password" icon={Lock} value={form.adminPassword}
+            onChange={onChange} placeholder="Minimum 8 characters" autoComplete="new-password" />
+          <Field label="Confirm password" name="confirmPassword" type="password" icon={Lock} value={form.confirmPassword}
+            onChange={onChange} placeholder="Re-enter password" autoComplete="new-password" />
         </div>
 
-        <div className="reg-grid-2">
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-              Your Email *
-            </label>
-            <input
-              name="adminEmail" type="email" value={form.adminEmail} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-              placeholder="you@example.com"
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-              Your Phone *
-            </label>
-            <input
-              name="adminPhone" type="tel" value={form.adminPhone} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-              placeholder="+1 (555) 000-0000"
-              inputMode="tel"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-            Password *
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              name="adminPassword" type={showPassword ? 'text' : 'password'}
-              value={form.adminPassword} onChange={onChange}
-              style={{
-                width: '100%', padding: '10px 14px', paddingRight: '40px', borderRadius: '10px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-              }}
-              placeholder="Minimum 8 characters"
-            />
-            <button
-              type="button" onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center'
-              }}
-            >
-              {showPassword ? <EyeOff size={18} color="#9CA3AF" /> : <Eye size={18} color="#9CA3AF" />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-            Confirm Password *
-          </label>
-          <input
-            name="confirmPassword" type="password" value={form.confirmPassword} onChange={onChange}
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: '10px',
-              border: '1.5px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit'
-            }}
-            placeholder="Re-enter your password"
-          />
-        </div>
-
-        {/* ── TRIAL / FOUNDING PROMO BANNER ──────────────────
-            Dynamic: shows the real founding-batch offer while spots
-            remain, and falls back to the standard trial messaging
-            once the first 20 churches have claimed their slot. Never
+        {/* Dynamic: shows the real founding-batch offer while spots remain, and falls
+            back to the standard trial messaging once the founding batch is full. Never
             overpromises 200 credits to someone who won't actually get them. */}
         {promoActive ? (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: '12px',
-            padding: '12px 14px', borderRadius: '10px',
-            background: '#FFFBEB', border: '1px solid #FDE68A'
-          }}>
-            <CheckCircle size={16} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <p style={{ fontSize: '13px', color: '#92400E', margin: 0, lineHeight: 1.5 }}>
+          <div className="au-note">
+            <Gift size={18} strokeWidth={1.6} aria-hidden="true" />
+            <p>
               You'll start on a <strong>1-month free trial</strong>. Register now as one of our first{' '}
-              {foundingStatus.limit} founding churches and get the full <strong>{bonusCredits} free SMS credits</strong> —
-              only <strong>{remaining} spot{remaining !== 1 ? 's' : ''} left</strong>! No credit card required.
+              {foundingStatus.limit} founding churches and get the full <strong>{bonusCredits} free SMS credits</strong>.
+              Only <strong>{remaining} spot{remaining !== 1 ? 's' : ''} left</strong>. No credit card required.
             </p>
           </div>
         ) : (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: '12px',
-            padding: '12px 14px', borderRadius: '10px',
-            background: '#ECFDF5', border: '1px solid #D1FAE5'
-          }}>
-            <CheckCircle size={16} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <p style={{ fontSize: '13px', color: '#065F46', margin: 0, lineHeight: 1.5 }}>
+          <div className="au-note is-plain">
+            <BadgeCheck size={18} strokeWidth={1.6} aria-hidden="true" />
+            <p>
               You'll start on a <strong>1-month free trial</strong> with{' '}
-              <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> to try automations — no credit card required.
+              <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> to try automations. No credit card required.
               Your trial expires after 30 days, and you can upgrade anytime to keep going.
             </p>
           </div>
         )}
 
-        <label style={{ display: 'flex', gap: 8, fontSize: 13, color: '#374151', alignItems: 'flex-start' }}>
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={e => setAgreed(e.target.checked)}
-            style={{ marginTop: 2, flexShrink: 0 }}
-          />
+        <label className="au-check">
+          <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} />
           <span>
             I have read and agree to the{' '}
             <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
@@ -347,63 +135,41 @@ function StepAdmin({ form, onChange, error, showPassword, setShowPassword, agree
           </span>
         </label>
       </div>
-    </div>
+    </>
   )
 }
 
 // ─── STEP 3: SUCCESS ─────────────────────────
 // Reflects the REAL values returned by the register API (smsCredits,
-// isFoundingChurch, foundingChurchNumber) rather than a hardcoded
-// "200 free SMS credits" claim — so this always matches what the
-// church's account was actually created with.
+// isFoundingChurch, foundingChurchNumber) rather than a hardcoded claim.
 function StepSuccess({ churchName, adminName, smsCredits, isFoundingChurch, foundingChurchNumber }) {
   const credits = smsCredits ?? STANDARD_TRIAL_SMS_FALLBACK
-
+  const next = [
+    { icon: Users,         text: 'Add your church members'            },
+    { icon: Building2,     text: 'Set up departments and cell groups' },
+    { icon: CalendarCheck, text: 'Track attendance and offerings'     },
+    { icon: Activity,      text: 'View your church health score'      },
+  ]
   return (
-    <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-      <div style={{
-        width: '64px', height: '64px', borderRadius: '50%',
-        background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}>
-        <CheckCircle size={36} color="#059669" />
-      </div>
-      <div>
-        <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#111827', margin: '0 0 8px', letterSpacing: '-0.3px' }}>
-          You're all set!
-        </h2>
-        <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: 1.6 }}>
-          Welcome to MinistryOS, <strong>{adminName}</strong>.<br />
-          {isFoundingChurch ? (
-            <>
-              <strong>{churchName}</strong> is ready to go — you're <strong>Founding Church #{foundingChurchNumber}</strong> 🎉,
-              with your <strong>1-month free trial</strong> and <strong>{credits} free SMS credits</strong> active.
-            </>
-          ) : (
-            <>
-              <strong>{churchName}</strong> is ready to go, with your <strong>1-month free trial</strong> and{' '}
-              <strong>{credits} free SMS credits</strong> active.
-            </>
-          )}
-        </p>
-      </div>
-      <div style={{
-        display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', width: '100%'
-      }}>
-        {[
-          'Add your church members',
-          'Set up departments and cell groups',
-          'Track attendance and offerings',
-          'View your church health score',
-        ].map(f => (
-          <div key={f} style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '10px 12px', borderRadius: '8px', background: '#F9FAFB'
-          }}>
-            <CheckCircle size={14} color="#059669" />
-            <span style={{ fontSize: '13px', color: '#374151' }}>{f}</span>
-          </div>
+    <div className="au-done">
+      <div className="au-done-badge"><Check size={28} strokeWidth={2} aria-hidden="true" /></div>
+      <h2 className="au-title">You're all set</h2>
+      <p>
+        Welcome to MinistryOS, <strong>{adminName}</strong>.{' '}
+        {isFoundingChurch ? (
+          <><strong>{churchName}</strong> is ready, and you're <strong>Founding Church #{foundingChurchNumber}</strong>,
+          with your <strong>1-month free trial</strong> and <strong>{credits} free SMS credits</strong> active.</>
+        ) : (
+          <><strong>{churchName}</strong> is ready, with your <strong>1-month free trial</strong> and{' '}
+          <strong>{credits} free SMS credits</strong> active.</>
+        )}
+      </p>
+      <ul className="au-next">
+        {next.map(({ icon: Icon, text }) => (
+          <li key={text}><Icon size={20} strokeWidth={1.5} aria-hidden="true" />{text}</li>
         ))}
-      </div>
+      </ul>
+      <p className="au-redirect">Taking you to your dashboard…</p>
     </div>
   )
 }
@@ -414,20 +180,17 @@ export default function Register() {
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const [form, setForm] = useState({
     churchName: '', denomination: '', country: '', churchEmail: '', churchPhone: '',
     adminName: '', adminEmail: '', adminPhone: '', adminPassword: '', confirmPassword: ''
   })
 
-  // Live founding-church promo status — powers all the dynamic SMS
-  // credit copy on this page (see StepAdmin banner, mobile header,
-  // brand panel, and the success screen).
+  // Live founding-church promo status — powers the dynamic SMS credit copy
+  // on this page (brand panel, admin step banner, and success screen).
   const [foundingStatus, setFoundingStatus] = useState(null)
 
-  // Snapshot of what the register API actually granted this church —
-  // used on the success screen instead of any hardcoded number.
+  // Snapshot of what the register API actually granted this church.
   const [regResult, setRegResult] = useState(null)
 
   useEffect(() => {
@@ -437,8 +200,7 @@ export default function Register() {
         const data = await res.json()
         if (data.success) setFoundingStatus(data.founding)
       } catch {
-        // Non-critical — the page just falls back to standard trial
-        // messaging if this fails, it never blocks registration.
+        // Non-critical — the page falls back to standard trial messaging.
       }
     }
     fetchFoundingStatus()
@@ -489,7 +251,6 @@ export default function Register() {
       })
       const data = await res.json()
       if (!data.success) { setError(data.message); return }
-      login(data.token, data.user)
       // Capture the REAL granted values for the success screen —
       // never assume 200; the backend decides based on founding slot.
       setRegResult({
@@ -498,7 +259,14 @@ export default function Register() {
         foundingChurchNumber: data.user?.foundingChurchNumber
       })
       setStep(2)
-      setTimeout(() => { window.location.href = '/dashboard' }, 2500)
+      // Sign in only AFTER the success screen has been shown. Calling
+      // login() earlier trips the RedirectIfAuthed guard on /register,
+      // which jumped straight to the dashboard and skipped this screen.
+      setTimeout(() => {
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
+        login(data.token, data.user)
+        window.location.href = '/dashboard'
+      }, 2500)
     } catch {
       setError('Cannot connect to server. Please try again.')
     } finally {
@@ -510,476 +278,80 @@ export default function Register() {
   const remaining    = foundingStatus?.remaining
   const bonusCredits = foundingStatus?.bonusCredits || 200
 
-  return (
+  const side = (
     <>
-      <style>{`
-        * { box-sizing: border-box; }
-        .reg-page { min-height: 100vh; display: flex; background: #fff; flex-direction: row; width: 100%; overflow-x: hidden; }
-
-        /* ── GENERIC RESPONSIVE FORM GRID ── */
-        .reg-grid-2 {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-        }
-
-        /* ── MOBILE HEADER (hidden on desktop) ── */
-        .reg-mobile-header {
-          display: none;
-          flex-direction: column;
-          gap: 14px;
-          background: linear-gradient(145deg, #3730A3 0%, #4F46E5 45%, #6D28D9 100%);
-          padding: 24px 20px 20px;
-        }
-
-        .reg-mobile-trial-banner {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          background: rgba(255,255,255,0.12);
-          border: 1px solid rgba(255,255,255,0.18);
-          border-radius: 10px;
-          padding: 10px 12px;
-        }
-        .reg-mobile-trial-banner p {
-          font-size: 12px;
-          line-height: 1.5;
-          color: rgba(255,255,255,0.9);
-          margin: 0;
-        }
-
-        .reg-mobile-features {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-
-        .reg-mobile-feature-pill {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: rgba(255,255,255,0.12);
-          border: 1px solid rgba(255,255,255,0.18);
-          border-radius: 20px;
-          padding: 5px 10px;
-          font-size: 12px;
-          color: rgba(255,255,255,0.9);
-          font-weight: 500;
-        }
-
-        /* ── LEFT BRAND PANEL ── */
-        .reg-brand {
-          width: 45%;
-          background: linear-gradient(145deg, #3730A3 0%, #4F46E5 45%, #6D28D9 100%);
-          position: relative;
-          overflow: hidden;
-          display: flex;
-          align-items: center;
-          padding: 56px 48px;
-        }
-        .reg-brand::before {
-          content: '';
-          position: absolute;
-          width: 500px; height: 500px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.04);
-          top: -160px; left: -160px;
-          pointer-events: none;
-        }
-        .reg-brand::after {
-          content: '';
-          position: absolute;
-          width: 340px; height: 340px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.05);
-          bottom: -100px; right: -80px;
-          pointer-events: none;
-        }
-
-        .reg-brand-inner {
-          position: relative;
-          z-index: 2;
-          display: flex;
-          flex-direction: column;
-          gap: 28px;
-          width: 100%;
-        }
-
-        .reg-brand-title {
-          font-size: 28px;
-          font-weight: 800;
-          color: #fff;
-          letter-spacing: -0.3px;
-          margin: 0;
-        }
-
-        .reg-brand-sub {
-          font-size: 15px;
-          line-height: 1.6;
-          color: rgba(255,255,255,0.75);
-          margin: 0 0 16px;
-          max-width: 340px;
-        }
-
-        .reg-trial-banner {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.18);
-          border-radius: 10px;
-          padding: 12px 14px;
-        }
-        .reg-trial-banner p {
-          font-size: 13px;
-          line-height: 1.55;
-          color: rgba(255,255,255,0.85);
-          margin: 0;
-        }
-
-        .reg-features {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .reg-feature-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          animation: fadein 0.4s ease both;
-        }
-
-        @keyframes fadein { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .reg-feature-dot {
-          width: 6px; height: 6px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.6);
-          flex-shrink: 0;
-        }
-
-        .reg-feature-item span:last-child {
-          font-size: 13.5px;
-          font-weight: 500;
-          color: rgba(255,255,255,0.85);
-        }
-
-        .reg-learn-cta {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          text-decoration: none;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.18);
-          border-radius: 10px;
-          padding: 11px 16px;
-          transition: background 0.18s, border-color 0.18s;
-          width: fit-content;
-          max-width: 100%;
-          margin-top: 8px;
-        }
-
-        .reg-learn-cta:hover {
-          background: rgba(255,255,255,0.18);
-          border-color: rgba(255,255,255,0.3);
-        }
-
-        .reg-learn-play {
-          width: 30px; height: 30px;
-          border-radius: 50%;
-          background: #fff;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .reg-learn-cta-text p:first-child {
-          font-size: 13px;
-          font-weight: 700;
-          color: #fff;
-          margin: 0 0 1px;
-        }
-
-        .reg-learn-cta-text p:last-child {
-          font-size: 11px;
-          color: rgba(255,255,255,0.5);
-          margin: 0;
-        }
-
-        /* ── RIGHT FORM PANEL ── */
-        .reg-form-panel {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 40px 24px;
-          width: 100%;
-        }
-
-        .reg-form-inner {
-          width: 100%;
-          max-width: 420px;
-        }
-
-        .reg-nav-buttons {
-          display: flex;
-          gap: 12px;
-          margin-top: 32px;
-        }
-
-        .btn-login {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 11px 20px;
-          background: #4F46E5;
-          color: #fff;
-          border: none;
-          border-radius: 10px;
-          font-size: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: background 0.15s;
-        }
-
-        .btn-login:hover { background: #4338CA; }
-        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
-
-        .btn-outline {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 11px 20px;
-          background: transparent;
-          color: #374151;
-          border: 1.5px solid #E5E7EB;
-          border-radius: 10px;
-          font-size: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: border-color 0.15s, background 0.15s;
-        }
-
-        .btn-outline:hover {
-          background: #F9FAFB;
-          border-color: #D1D5DB;
-        }
-
-        .reg-login-link {
-          margin-top: 24px;
-          text-align: center;
-          font-size: 13px;
-          color: #6B7280;
-        }
-
-        .reg-login-link a {
-          color: #4F46E5;
-          text-decoration: none;
-          font-weight: 700;
-        }
-
-        .reg-login-link a:hover { text-decoration: underline; }
-
-        .reg-footer {
-          margin-top: 32px;
-          text-align: center;
-          font-size: 12px;
-          color: #D1D5DB;
-        }
-
-        /* ── TABLET / MOBILE ── */
-        @media (max-width: 900px) {
-          .reg-page { flex-direction: column; }
-          .reg-brand { display: none; }
-          .reg-mobile-header { display: flex; }
-          .reg-form-panel { padding-top: 28px; align-items: flex-start; }
-        }
-
-        @media (max-width: 640px) {
-          .reg-grid-2 { grid-template-columns: 1fr; gap: 14px; }
-        }
-
-        @media (max-width: 480px) {
-          .reg-form-panel { padding: 20px 16px 28px; }
-          .reg-mobile-header { padding: 20px 16px 18px; }
-          .reg-nav-buttons { flex-direction: column-reverse; }
-        }
-      `}</style>
-
-      <div className="reg-page">
-
-        {/* MOBILE HEADER — visible only on small screens */}
-        <div className="reg-mobile-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Logo size={36} showText={false} />
-            <div>
-              <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.2px' }}>
-                MinistryOS
-              </h1>
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', margin: 0 }}>
-                1-month free trial · No credit card
-              </p>
-            </div>
-          </div>
-
-          <div className="reg-mobile-trial-banner">
-            <CheckCircle size={14} color="rgba(255,255,255,0.85)" style={{ flexShrink: 0, marginTop: '2px' }} />
-            {promoActive ? (
-              <p>
-                <strong>1-month free trial</strong> — register now as a founding church for{' '}
-                <strong>{bonusCredits} free SMS credits</strong> ({remaining} spot{remaining !== 1 ? 's' : ''} left).
-              </p>
-            ) : (
-              <p>
-                <strong>1-month free trial</strong> with <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> included.
-                Trial expires after 30 days — upgrade anytime to keep going.
-              </p>
-            )}
-          </div>
-
-          <div className="reg-mobile-features">
-            {[
-              'Member management',
-              'Attendance tracking',
-              'Tithes & offerings',
-              'Smart automations',
-              'Church insights',
-            ].map((f, i) => (
-              <div className="reg-mobile-feature-pill" key={i}>
-                <CheckCircle size={11} color="rgba(255,255,255,0.7)" />
-                {f}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* LEFT BRAND PANEL — visible only on desktop */}
-        <div className="reg-brand">
-          <div className="reg-brand-inner">
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <Logo size={48} showText={false} />
-              <h1 className="reg-brand-title">MinistryOS</h1>
-              <p className="reg-brand-sub">
-                The complete operating system for your church. Set up in minutes.
-              </p>
-            </div>
-
-            <div className="reg-trial-banner">
-              <CheckCircle size={16} color="#fff" style={{ flexShrink: 0, marginTop: '2px' }} />
-              {promoActive ? (
-                <p>
-                  Start with a <strong>1-month free trial</strong>. Register now as one of our first{' '}
-                  {foundingStatus.limit} founding churches for the full <strong>{bonusCredits} free SMS credits</strong> —
-                  only <strong>{remaining} spot{remaining !== 1 ? 's' : ''} left</strong>. No credit card required.
-                </p>
-              ) : (
-                <p>
-                  Start with a <strong>1-month free trial</strong> and <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong> —
-                  no credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
-                </p>
-              )}
-            </div>
-
-            <div className="reg-features">
-              {[
-                'Full member management system',
-                'Attendance & offering tracking',
-                'Smart automations & alerts',
-                'Real-time church health insights',
-              ].map((f, i) => (
-                <div className="reg-feature-item" key={i} style={{ animationDelay: `${i * 100}ms` }}>
-                  <span className="reg-feature-dot" />
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
-
-            <a href="/learn-more" className="reg-learn-cta">
-              <div className="reg-learn-play">
-                <ArrowRight size={14} color="#4F46E5" />
-              </div>
-              <div className="reg-learn-cta-text">
-                <p>Learn More</p>
-                <p>See features, pricing & how it works</p>
-              </div>
-              <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.4)' }} />
-            </a>
-
-          </div>
-        </div>
-
-        {/* RIGHT FORM PANEL */}
-        <div className="reg-form-panel">
-          <div className="reg-form-inner">
-
-            {step < 2 && (
-              <StepIndicator current={step} total={2} />
-            )}
-
-            {step === 0 && (
-              <StepChurch form={form} onChange={handleChange} error={error} />
-            )}
-            {step === 1 && (
-              <StepAdmin
-                form={form}
-                onChange={handleChange}
-                error={error}
-                showPassword={showPassword}
-                setShowPassword={setShowPassword}
-                agreed={agreed}
-                setAgreed={setAgreed}
-                foundingStatus={foundingStatus}
-              />
-            )}
-            {step === 2 && (
-              <StepSuccess
-                churchName={form.churchName}
-                adminName={form.adminName}
-                smsCredits={regResult?.smsCredits}
-                isFoundingChurch={regResult?.isFoundingChurch}
-                foundingChurchNumber={regResult?.foundingChurchNumber}
-              />
-            )}
-
-            {step < 2 && (
-              <div className="reg-nav-buttons">
-                {step > 0 && (
-                  <button className="btn-outline" onClick={() => { setStep(s => s - 1); setError('') }}>
-                    <ArrowLeft size={16} /> Back
-                  </button>
-                )}
-                {step === 0 && (
-                  <button className="btn-login" onClick={handleNext}>
-                    Next <ArrowRight size={18} />
-                  </button>
-                )}
-                {step === 1 && (
-                  <button className="btn-login" onClick={handleSubmit} disabled={loading || !agreed}>
-                    {loading
-                      ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Creating...</>
-                      : <>Create Account <ArrowRight size={18} /></>}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {step < 2 && (
-              <p className="reg-login-link">
-                Already have an account? <a href="/login">Sign in →</a>
-              </p>
-            )}
-
-            <p className="reg-footer">© 2026 EM Control IT Solutions · MinistryOS</p>
-          </div>
-        </div>
-
+      <h1 className="au-h1">The complete operating system for your church.</h1>
+      <p className="au-lede">Set up in minutes. Start with members and attendance, add giving and automations when you're ready.</p>
+      <ul className="au-points">
+        {POINTS.map(({ icon: Icon, text }) => (
+          <li key={text}><Icon size={20} strokeWidth={1.5} aria-hidden="true" />{text}</li>
+        ))}
+      </ul>
+      <div className="au-promo">
+        <Gift size={18} strokeWidth={1.6} aria-hidden="true" />
+        {promoActive ? (
+          <p>
+            Start with a <strong>1-month free trial</strong>. Register now as one of our first{' '}
+            {foundingStatus.limit} founding churches for the full <strong>{bonusCredits} free SMS credits</strong>.
+            Only <strong>{remaining} spot{remaining !== 1 ? 's' : ''} left</strong>. No credit card required.
+          </p>
+        ) : (
+          <p>
+            Start with a <strong>1-month free trial</strong> and <strong>{STANDARD_TRIAL_SMS_FALLBACK} free SMS credits</strong>.
+            No credit card required. Your trial expires after 30 days, and you can upgrade anytime to keep going.
+          </p>
+        )}
       </div>
+      <a href="/learn-more" className="au-learn">See features, pricing and how it works</a>
     </>
+  )
+
+  return (
+    <AuthShell side={side} wide>
+      {step < 2 && <Steps current={step} />}
+
+      {step === 0 && <StepChurch form={form} onChange={handleChange} error={error} />}
+      {step === 1 && (
+        <StepAdmin
+          form={form} onChange={handleChange} error={error}
+          agreed={agreed} setAgreed={setAgreed} foundingStatus={foundingStatus}
+        />
+      )}
+      {step === 2 && (
+        <StepSuccess
+          churchName={form.churchName}
+          adminName={form.adminName}
+          smsCredits={regResult?.smsCredits}
+          isFoundingChurch={regResult?.isFoundingChurch}
+          foundingChurchNumber={regResult?.foundingChurchNumber}
+        />
+      )}
+
+      {step < 2 && (
+        <div className="au-actions">
+          {step > 0 && (
+            <button className="mx-btn mx-btn-line" onClick={() => { setStep(s => s - 1); setError('') }}>
+              <ArrowLeft size={17} /> Back
+            </button>
+          )}
+          {step === 0 && (
+            <button className="mx-btn mx-btn-primary mx-btn-block" onClick={handleNext}>
+              Continue <ArrowRight size={17} />
+            </button>
+          )}
+          {step === 1 && (
+            <button className="mx-btn mx-btn-primary mx-btn-block" onClick={handleSubmit} disabled={loading || !agreed}>
+              {loading ? <><Loader2 size={18} className="mx-spin" /> Creating account</> : 'Create account'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {step < 2 && (
+        <p className="au-signin">Already have an account? <a href="/login">Sign in</a></p>
+      )}
+
+      <p className="au-legal">© 2026 EM Control IT Solutions. MinistryOS.</p>
+    </AuthShell>
   )
 }

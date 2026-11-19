@@ -1,4 +1,6 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { ROUTE_PERMISSIONS } from '../../utils/access'
 import {
   LayoutDashboard, Users,
   CalendarCheck, Wallet, Menu
@@ -12,9 +14,11 @@ const bottomItems = [
 ]
 
 export default function BottomNav({ onMenuClick }) {
+  const { can } = useAuth()
+  const items = bottomItems.filter(i => can(...(ROUTE_PERMISSIONS[i.to] || [])))
   return (
     <nav className="bottom-nav">
-      {bottomItems.map(({ to, icon: Icon, label }) => (
+      {items.map(({ to, icon: Icon, label }) => (
         <NavLink
           key={to}
           to={to}

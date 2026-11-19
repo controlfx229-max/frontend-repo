@@ -9,15 +9,14 @@ import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
+import { formatMoney, getCurrencyCode } from '../../utils/currency'
+import { fmtDate } from '../../utils/dates'
 
 // ─── HELPERS ─────────────────────────────────
-const formatGHS = (v) =>
-  `GHS ${parseFloat(v || 0).toLocaleString('en-GH', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2
-  })}`
+const formatGHS = (v) => formatMoney(v)   // legacy name; formats in the church's currency
 
 const formatDate = (d) => d
-  ? new Date(d).toLocaleDateString('en-GH', {
+  ? fmtDate(d, {
       day: 'numeric', month: 'short', year: 'numeric'
     })
   : '—'
@@ -186,7 +185,7 @@ function CreatePledgeForm({ api, onSuccess, onClose }) {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Amount Pledged (GHS) *</label>
+            <label className="form-label">Amount Pledged ({getCurrencyCode()}) *</label>
             <input name="pledgedAmount" type="number" step="0.01" min="0"
               value={form.pledgedAmount} onChange={handleChange}
               className="form-input" placeholder="0.00" />
@@ -284,7 +283,7 @@ function RecordPaymentForm({ pledge, api, onSuccess, onClose }) {
       <div className="form-section">
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Payment Amount (GHS) *</label>
+            <label className="form-label">Payment Amount ({getCurrencyCode()}) *</label>
             <input type="number" step="0.01" min="0.01" max={balance}
               value={form.amount}
               onChange={e => { setForm(p => ({ ...p, amount: e.target.value })); setError('') }}

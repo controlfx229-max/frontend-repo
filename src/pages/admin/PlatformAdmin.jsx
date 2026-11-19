@@ -2,17 +2,27 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
   Building2, CheckCircle, XCircle, Clock,
-  Users, Wallet, AlertCircle,
+  AlertCircle,
   Shield, RefreshCw, Ban, Play, Search,
   ChevronDown, ChevronUp,
   LogOut, CreditCard, Bell
 } from 'lucide-react'
+import { formatMoney } from '../../utils/currency'
+import { fmtDate } from '../../utils/dates'
+import PlatformOverview from './PlatformOverview'
 
 const API = `${import.meta.env.VITE_API_URL.replace('/api/v1', '')}/api/admin/platform`
 
 // ── HELPERS ───────────────────────────────────
 const formatGHS = (n) =>
-  `GHS ${parseFloat(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
+  `GHS ${parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+
+// Revenue is kept per currency (GHS and USD can't be added without an exchange rate).
+const formatMRR = (o) => {
+  const by = o?.mrrByCurrency
+  if (!by || Object.keys(by).length === 0) return formatGHS(o?.mrrGHS)
+  return Object.entries(by).map(([cur, v]) => formatMoney(v, cur)).join('  +  ')
+}
 
 const timeAgo = (date) => {
   if (!date) return '—'
@@ -20,7 +30,7 @@ const timeAgo = (date) => {
   if (d === 0) return 'Today'
   if (d === 1) return 'Yesterday'
   if (d < 30)  return `${d} days ago`
-  return new Date(date).toLocaleDateString('en-GH', {
+  return fmtDate(date, {
     day: 'numeric', month: 'short', year: 'numeric'
   })
 }
@@ -39,45 +49,6 @@ const ORG_STATUS_STYLES = {
   expired:          { bg: '#FEF3C7', color: '#92400E', label: 'Expired'     },
   pending_approval: { bg: '#DBEAFE', color: '#1E40AF', label: 'Pending'     },
   suspended:        { bg: '#FEE2E2', color: '#991B1B', label: 'Suspended'   },
-}
-
-// ── STAT CARD ─────────────────────────────────
-function StatCard({ label, value, sub, icon: Icon, color = 'var(--primary)' }) {
-  return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-      boxShadow: 'var(--shadow-sm)'
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 'var(--space-4)'
-      }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 'var(--radius-md)',
-          background: color + '18',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <Icon size={18} color={color} />
-        </div>
-      </div>
-      <p style={{
-        fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)',
-        fontWeight: 800, color: 'var(--text-primary)',
-        lineHeight: 1, marginBottom: 'var(--space-1)'
-      }}>
-        {value}
-      </p>
-      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', fontWeight: 500 }}>
-        {label}
-      </p>
-      {sub && (
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-          {sub}
-        </p>
-      )}
-    </div>
-  )
 }
 
 // ── CONFIRM DIALOG ────────────────────────────
@@ -275,7 +246,7 @@ function PaymentRow({ payment, token, onRefresh }) {
           fontFamily: 'var(--font-heading)', fontWeight: 700,
           color: 'var(--text-primary)', flex: 1
         }}>
-          GHS {payment.amount}
+          {formatMoney(payment.amount, payment.currency || 'GHS')}
         </p>
 
         {/* Status */}
@@ -317,7 +288,7 @@ function PaymentRow({ payment, token, onRefresh }) {
               ['Email',          org?.email             || '—'],
               ['Transaction ID', payment.transactionId  || 'Not submitted yet'],
               ['Submitted',      payment.submittedAt
-                ? new Date(payment.submittedAt).toLocaleString('en-GH') : '—'],
+                ? new Date(payment.submittedAt).toLocaleString(undefined) : '—'],
               ['Payment type',   payment.type],
             ].map(([label, value]) => (
               <div key={label}>
@@ -495,7 +466,7 @@ function ChurchRow({ org, token, onRefresh }) {
           flex: 1, textAlign: 'right'
         }}>
           {org.subscriptionExpires
-            ? new Date(org.subscriptionExpires).toLocaleDateString('en-GH', {
+            ? fmtDate(org.subscriptionExpires, {
                 day: 'numeric', month: 'short', year: 'numeric'
               })
             : '—'}
@@ -753,12 +724,14 @@ function NotificationBell({ token, onPaymentClick }) {
                     width: 32, height: 32, borderRadius: 'var(--radius-md)',
                     flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: n.type === 'payment_submitted'
-                      ? 'var(--success-bg)' : 'var(--danger-bg)'
+                    background: n.type === 'payment_submitted' || n.type === 'payment_received'
+                      ? 'var(--success-bg)' : n.type === 'payment_problem' ? 'var(--warning-bg, #FEF3C7)' : 'var(--danger-bg)'
                   }}>
-                    {n.type === 'payment_submitted'
+                    {n.type === 'payment_submitted' || n.type === 'payment_received'
                       ? <CheckCircle size={15} color="var(--success)" />
-                      : <XCircle    size={15} color="var(--danger)"  />
+                      : n.type === 'payment_problem'
+                        ? <AlertCircle size={15} color="var(--warning)" />
+                        : <XCircle    size={15} color="var(--danger)"  />
                     }
                   </div>
 
@@ -818,7 +791,7 @@ export default function PlatformAdmin() {
       const [oRes, pRes, cRes] = await Promise.all([
         fetch(`${API}/overview`, { headers }),
         fetch(`${API}/payments`, { headers }),
-        fetch(`${API}/churches`, { headers }),
+        fetch(`${API}/churches?limit=500`, { headers }),
       ])
       const [oData, pData, cData] = await Promise.all([
         oRes.json(), pRes.json(), cRes.json()
@@ -847,13 +820,6 @@ export default function PlatformAdmin() {
     return matchSearch && matchStatus
   })
 
-  const churchStats = {
-    total:     churches.length,
-    active:    churches.filter(c => c.subscriptionStatus === 'active').length,
-    trial:     churches.filter(c => c.subscriptionStatus === 'trial').length,
-    expired:   churches.filter(c => c.subscriptionStatus === 'expired').length,
-    suspended: churches.filter(c => c.subscriptionStatus === 'suspended').length,
-  }
   const pendingPayments = payments.filter(p => p.status === 'pending_approval').length
 
   const TABS = [
@@ -993,142 +959,7 @@ export default function PlatformAdmin() {
 
         {/* ── OVERVIEW TAB ── */}
         {activeTab === 'overview' && overview && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-
-            {/* Key metrics */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)'
-            }}>
-              <StatCard
-                label="Total Churches"
-                value={churchStats.total}
-                sub={`${churchStats.active} active`}
-                icon={Building2}
-                color="var(--primary)"
-              />
-              <StatCard
-                label="Total Members"
-                value={overview.totalMembers.toLocaleString()}
-                icon={Users}
-                color="var(--success)"
-              />
-              <StatCard
-                label="MRR"
-                value={formatGHS(overview.mrrGHS)}
-                sub="Monthly recurring revenue"
-                icon={Wallet}
-                color="var(--accent)"
-              />
-              <StatCard
-                label="Pending Approvals"
-                value={pendingPayments}
-                sub="Awaiting review"
-                icon={Clock}
-                color={pendingPayments > 0 ? 'var(--warning)' : 'var(--text-muted)'}
-              />
-            </div>
-
-            {/* Church status + recent approvals */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)'
-            }}>
-
-              {/* Status breakdown */}
-              <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <h3 style={{
-                  fontSize: 'var(--text-base)', fontWeight: 700,
-                  color: 'var(--text-primary)', marginBottom: 'var(--space-4)'
-                }}>
-                  Church Status
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  {[
-                    { label: 'Active',    count: churchStats.active,    color: 'var(--success)' },
-                    { label: 'Trial',     count: churchStats.trial,     color: 'var(--info)'    },
-                    { label: 'Expired',   count: churchStats.expired,   color: 'var(--warning)' },
-                    { label: 'Suspended', count: churchStats.suspended, color: 'var(--danger)'  },
-                  ].map(({ label, count, color }) => (
-                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                      <div style={{
-                        width: 10, height: 10, borderRadius: '50%',
-                        background: color, flexShrink: 0
-                      }} />
-                      <span style={{
-                        fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', flex: 1
-                      }}>
-                        {label}
-                      </span>
-                      <span style={{
-                        fontSize: 'var(--text-sm)', fontWeight: 700,
-                        color: 'var(--text-primary)'
-                      }}>
-                        {count}
-                      </span>
-                      <div style={{
-                        width: 80, height: 4,
-                        background: 'var(--surface-2)', borderRadius: 999
-                      }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${churchStats.total > 0
-                            ? (count / churchStats.total) * 100 : 0}%`,
-                          background: color, borderRadius: 999
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent approvals */}
-              <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <h3 style={{
-                  fontSize: 'var(--text-base)', fontWeight: 700,
-                  color: 'var(--text-primary)', marginBottom: 'var(--space-4)'
-                }}>
-                  Recent Approvals
-                </h3>
-                {(overview.recentApprovals || []).length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                    {overview.recentApprovals.slice(0, 5).map(p => (
-                      <div
-                        key={p._id}
-                        style={{
-                          display: 'flex', alignItems: 'center',
-                          justifyContent: 'space-between', fontSize: 'var(--text-sm)'
-                        }}
-                      >
-                        <div>
-                          <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {p.organizationId?.name || '—'}
-                          </p>
-                          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                            {p.reference} · {timeAgo(p.reviewedAt)}
-                          </p>
-                        </div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)' }}>
-                          GHS {p.amount}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                    No recent approvals.
-                  </p>
-                )}
-              </div>
-
-            </div>
-          </div>
+          <PlatformOverview overview={overview} formatMRR={formatMRR} onGoTab={setActiveTab} />
         )}
 
         {/* ── PAYMENTS TAB ── */}

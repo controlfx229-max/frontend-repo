@@ -5,11 +5,31 @@ import {
   MessageCircle, Zap, Users, GitBranch, MessageSquare,
   ArrowRight, Shield, Star, TrendingUp, Plus
 } from 'lucide-react'
+import { formatMoney } from '../../utils/currency'
+import { fmtDate } from '../../utils/dates'
 
 const WHATSAPP_NUMBER = '233553951396'
 
-const formatGHS = (n) =>
-  `GHS ${parseFloat(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
+// Money in the church's BILLING currency (GHS for Ghana, USD elsewhere).
+// Whole amounts show without decimals ("$25", "GHS 200"); pass `decimals` to force.
+const fmt = (n, currency, decimals) =>
+  formatMoney(n, currency || 'GHS', { decimals: decimals ?? (Number.isInteger(Number(n)) ? 0 : 2) })
+
+// GHS payments are made by Mobile Money; every other currency is paid with
+// the manual payment details the platform provides (bank / PayPal ...).
+const isMomoPayment = (p) => !p?.currency || p.currency === 'GHS'
+
+// ── ONLINE PAYMENT (Paystack) ─────────────────
+// Starts a secure Paystack checkout (Mobile Money or card) and sends the browser there.
+// Paystack brings the church back to /billing, where the payment is confirmed.
+const startOnlinePayment = async (token, reference) => {
+  const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/pay-online/${reference}`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}` }
+  })
+  const data = await res.json()
+  if (!data.success) throw new Error(data.message || 'Could not start the online payment.')
+  window.location.assign(data.authorizationUrl)
+}
 
 // ── PLAN CONFIG (monthly reference — yearly prices come from the
 //    backend's billing.yearlyPlans so pricing/discount logic lives
@@ -19,8 +39,8 @@ const PLANS = [
     id: 'starter',
     name: 'Starter',
     priceGHS: 200,
-    color: '#4F46E5',
-    bg: '#EEF2FF',
+    color: '#2563EB',
+    bg: '#DBEAFE',
     features: ['Up to 200 members', '5 staff accounts', '1 branch', '200 SMS credits/month'],
     icon: Zap,
   },
@@ -134,7 +154,7 @@ function StatusBanner({ billing }) {
             Payment under review
           </p>
           <p style={{ fontSize: 'var(--text-xs)', color: '#1E40AF', marginTop: 2 }}>
-            Reference <strong>{pendingPayment.reference}</strong> — GHS {pendingPayment.amount} submitted.
+            Reference <strong>{pendingPayment.reference}</strong> — {fmt(pendingPayment.amount, pendingPayment.currency)} submitted.
             Our team will verify within 24 hours.
           </p>
         </div>
@@ -203,7 +223,7 @@ function StatusBanner({ billing }) {
         <p style={{ fontWeight: 600, color: '#065F46', fontSize: 'var(--text-sm)' }}>
           {plan.charAt(0).toUpperCase() + plan.slice(1)} plan active — renews{' '}
           {expiresAt
-            ? new Date(expiresAt).toLocaleDateString('en-GH', { day: 'numeric', month: 'long', year: 'numeric' })
+            ? fmtDate(expiresAt, { day: 'numeric', month: 'long', year: 'numeric' })
             : '—'}
         </p>
       </div>
@@ -246,8 +266,9 @@ function UsageCard({ label, current, limit, color, icon: Icon }) {
 }
 
 // ── PAYMENT MODAL ─────────────────────────────
-function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, onClose, onSuccess }) {
+function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, onlinePayments: onlineCurrencies, onClose, onSuccess }) {
   const [loading,  setLoading]  = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const [creating, setCreating] = useState(true)
   const [payment,  setPayment]  = useState(null)
   const [step,     setStep]     = useState('instructions')
@@ -284,8 +305,15 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
     create()
   }, [])
 
+  const handlePayNow = async () => {
+    setError('')
+    setRedirecting(true)
+    try { await startOnlinePayment(token, payment.reference) }
+    catch (err) { setError(err.message); setRedirecting(false) }
+  }
+
   const handleSubmitProof = async () => {
-    if (!txId.trim()) { setError('Please enter your MoMo transaction ID.'); return }
+    if (!txId.trim()) { setError('Please enter your payment transaction ID or reference.'); return }
     setLoading(true)
     try {
       const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/proof`, {
@@ -362,7 +390,7 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
                   Amount to send
                 </p>
                 <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-4xl)', fontWeight: 800, color: 'var(--primary)' }}>
-                  GHS {payment.amount}
+                  {fmt(payment.amount, payment.currency)}
                 </p>
                 {(type === 'subscription' || type === 'upgrade') && (
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)', marginTop: 2 }}>
@@ -374,15 +402,31 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
                 </p>
               </div>
 
+              {onlineCurrencies?.includes(payment.currency) && (
+                <div style={{ textAlign: 'center' }}>
+                  <button className="btn-primary" onClick={handlePayNow} disabled={redirecting}
+                    style={{ width: '100%', padding: '14px 0', fontSize: 'var(--text-base)' }}>
+                    {redirecting ? 'Opening secure checkout…' : `Pay ${fmt(payment.amount, payment.currency)} now`}
+                  </button>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 8 }}>
+                    Mobile Money (MTN, Telecel, AirtelTigo) or card, secured by Paystack. Your plan activates automatically.
+                  </p>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '14px 0 -6px', fontWeight: 600 }}>
+                    — or pay manually —
+                  </p>
+                </div>
+              )}
+
               <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
                 <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
-                  MoMo Payment Instructions
+                  {isMomoPayment(payment) ? 'MoMo Payment Instructions' : 'Payment Instructions'}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   {[
-                    ['Send to',      payment.momoNumber],
-                    ['Account name', payment.accountName],
-                    ['Amount',       `GHS ${payment.amount}`],
+                    ...(isMomoPayment(payment)
+                      ? [['Send to', payment.momoNumber], ['Account name', payment.accountName]]
+                      : [['Pay using', payment.manualDetails || 'Payment details will be shared with you by email']]),
+                    ['Amount',       fmt(payment.amount, payment.currency)],
                     ['Reference',    payment.reference],
                   ].map(([label, value]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
@@ -394,7 +438,7 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
               </div>
 
               <div>
-                <label className="form-label">Enter MoMo Transaction ID after paying *</label>
+                <label className="form-label">Enter your transaction ID after paying *</label>
                 <input
                   className="form-input"
                   value={txId}
@@ -403,7 +447,7 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
                   style={{ marginTop: 'var(--space-2)' }}
                 />
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
-                  Found in your MoMo transaction history or SMS confirmation.
+                  Found in your payment confirmation (MoMo SMS, bank or PayPal receipt).
                 </p>
               </div>
 
@@ -429,6 +473,8 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
 
 // ── BRANCHES TAB ──────────────────────────────
 function BranchesTab({ billing, token, onPayment }) {
+  const branchPrice = billing?.extraBranchPrice ?? 150
+  const branchCur   = billing?.currency || 'GHS'
   const [branchName, setBranchName] = useState('')
   const [error, setError]           = useState('')
 
@@ -454,12 +500,12 @@ function BranchesTab({ billing, token, onPayment }) {
               Additional Branch
             </p>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-              Each additional branch costs GHS 150/month
+              Each additional branch costs {fmt(branchPrice, branchCur)}/month
             </p>
           </div>
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 800, color: 'var(--primary)' }}>
-              GHS 150
+              {fmt(branchPrice, branchCur)}
             </p>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>per branch / month</p>
           </div>
@@ -474,7 +520,7 @@ function BranchesTab({ billing, token, onPayment }) {
           </p>
           {[
             '1. Enter your new branch name below',
-            '2. Pay GHS 150 via MoMo to the number shown',
+            `2. Pay ${fmt(branchPrice, branchCur)} using the payment details shown`,
             '3. Submit your transaction ID as proof',
             '4. We verify and activate your branch within 24 hours',
           ].map(step => (
@@ -501,7 +547,7 @@ function BranchesTab({ billing, token, onPayment }) {
           onClick={handleRequest}
           style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }}
         >
-          <Plus size={16} /> Request Branch — GHS 150/month
+          <Plus size={16} /> Request Branch — {fmt(branchPrice, branchCur)}/month
         </button>
       </div>
 
@@ -515,7 +561,7 @@ function BranchesTab({ billing, token, onPayment }) {
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
           Your <strong>{billing?.plan}</strong> plan includes{' '}
           <strong>{billing?.allowedBranches === -1 ? 'unlimited' : billing?.allowedBranches} branch{billing?.allowedBranches !== 1 ? 'es' : ''}</strong>.
-          Additional branches are billed at GHS 150/month each.
+          Additional branches are billed at {fmt(branchPrice, branchCur)}/month each.
         </p>
       </div>
     </div>
@@ -543,6 +589,34 @@ export default function Billing() {
   }, [token])
 
   useEffect(() => { fetchBilling() }, [fetchBilling])
+
+  // ── Returning from Paystack checkout ──
+  // Paystack sends the church back to /billing?reference=…; we ask the server to
+  // confirm it with Paystack (the server never trusts the browser), then refresh.
+  const [payResult, setPayResult] = useState(null)   // { state: 'checking' | 'approved' | 'pending' | 'failed' | 'problem', message }
+  const returnRef = useRef(new URLSearchParams(window.location.search).get('reference') || new URLSearchParams(window.location.search).get('trxref'))
+  useEffect(() => {
+    const ref = returnRef.current
+    if (!ref || !token) return
+    returnRef.current = null
+    window.history.replaceState({}, '', window.location.pathname)
+    setPayResult({ state: 'checking' })
+    ;(async () => {
+      try {
+        const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/paystack/verify/${encodeURIComponent(ref)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await res.json()
+        const state = data.status === 'approved' ? 'approved' : data.status === 'failed' ? 'failed' : data.status === 'problem' ? 'problem' : 'pending'
+        setPayResult({ state, message: data.message })
+        if (state === 'approved') {
+          fetchBilling()
+          // reload once so the whole app picks up the new plan straight away
+          setTimeout(() => window.location.assign('/billing'), 2500)
+        }
+      } catch { setPayResult({ state: 'pending', message: 'We could not reach the server to confirm. If you were charged, your plan will activate automatically within a few minutes.' }) }
+    })()
+  }, [token, fetchBilling])
 
   const openPayment = (type, plan = null, smsBundle = null, branchName = null, cycle = billingCycle) => {
     setModal({ type, plan, smsBundle, branchName, billingCycle: cycle })
@@ -594,6 +668,20 @@ export default function Billing() {
         </a>
       </div>
 
+      {payResult && (
+        <div style={{
+          padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', fontWeight: 600,
+          background: payResult.state === 'approved' ? 'var(--success-bg)' : payResult.state === 'failed' || payResult.state === 'problem' ? '#FEE2E2' : '#FEF9C3',
+          color:      payResult.state === 'approved' ? 'var(--success-text, #065F46)' : payResult.state === 'failed' || payResult.state === 'problem' ? '#991B1B' : '#713F12'
+        }}>
+          {payResult.state === 'checking' && 'Confirming your payment with Paystack…'}
+          {payResult.state === 'approved' && `✅ ${payResult.message || 'Payment confirmed. Your account is active.'}`}
+          {payResult.state === 'pending'  && (payResult.message || 'Your payment is still processing. It will activate automatically as soon as Paystack confirms it — you can safely leave this page.')}
+          {payResult.state === 'failed'   && `Payment was not completed${payResult.message ? ` (${payResult.message})` : ''}. You have not been charged — you can try again from the History tab.`}
+          {payResult.state === 'problem'  && payResult.message}
+        </div>
+      )}
+
       {/* Status Banner */}
       <StatusBanner billing={billing} />
 
@@ -638,7 +726,7 @@ export default function Billing() {
 
           {(billing.status === 'trial' || billing.status === 'expired') && (
             <div style={{
-              background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+              background: '#0F4A3C',
               borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)',
               color: 'white', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-4)'
@@ -648,7 +736,7 @@ export default function Billing() {
                   {billing.status === 'trial' ? 'Upgrade to unlock full potential' : 'Renew your subscription'}
                 </h3>
                 <p style={{ opacity: 0.85, fontSize: 'var(--text-sm)' }}>
-                  Starting at GHS 200/month — or save {yearlyDiscountPct}% with yearly billing. Pay via MoMo, activated within 24 hours.
+                  Starting at {fmt(billing.availablePlans?.starter?.price ?? 200, billing.currency)}/month — or save {yearlyDiscountPct}% with yearly billing. Activated within 24 hours of payment confirmation.
                 </p>
               </div>
               <button
@@ -719,8 +807,10 @@ export default function Billing() {
               const isUpgrade = PLANS.findIndex(p => p.id === currentPlanId) < PLANS.findIndex(p => p.id === plan.id)
               const PlanIcon  = plan.icon
 
-              const yearlyPrice  = billing?.yearlyPlans?.[plan.id]?.priceGHS ?? fallbackYearly(plan.priceGHS)
-              const displayPrice = billingCycle === 'yearly' ? yearlyPrice : plan.priceGHS
+              const planCurrency = billing?.currency || 'GHS'
+              const monthlyPrice = billing?.availablePlans?.[plan.id]?.price ?? plan.priceGHS
+              const yearlyPrice  = billing?.yearlyPlans?.[plan.id]?.price ?? fallbackYearly(monthlyPrice)
+              const displayPrice = billingCycle === 'yearly' ? yearlyPrice : monthlyPrice
               const monthlyEquiv = billingCycle === 'yearly' ? Math.round(yearlyPrice / 12) : null
 
               return (
@@ -748,14 +838,14 @@ export default function Billing() {
 
                   <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, color: 'var(--text-primary)', fontSize: 'var(--text-lg)', marginBottom: 'var(--space-1)' }}>{plan.name}</h3>
                   <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 800, color: plan.color, marginBottom: 2 }}>
-                    GHS {displayPrice}
+                    {fmt(displayPrice, planCurrency)}
                     <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontWeight: 500 }}>
                       /{billingCycle === 'yearly' ? 'yr' : 'mo'}
                     </span>
                   </p>
                   {billingCycle === 'yearly' && (
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }}>
-                      ≈ GHS {monthlyEquiv}/mo billed annually
+                      ≈ {fmt(monthlyEquiv, planCurrency)}/mo billed annually
                     </p>
                   )}
                   {billingCycle === 'monthly' && <div style={{ marginBottom: 'var(--space-4)' }} />}
@@ -784,7 +874,7 @@ export default function Billing() {
                     >
                       {billing?.status === 'active' && isUpgrade
                         ? `Upgrade to ${plan.name}`
-                        : `Subscribe — GHS ${displayPrice}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`}
+                        : `Subscribe — ${fmt(displayPrice, planCurrency)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`}
                     </button>
                   )}
                 </div>
@@ -835,10 +925,10 @@ export default function Billing() {
                   <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>credits</span>
                 </div>
                 <p style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--primary)' }}>
-                  GHS {bundle.priceGHS}
+                  {fmt(billing?.smsBundles?.[bundle.key]?.price ?? bundle.priceGHS, billing?.currency)}
                 </p>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                  ~GHS {(bundle.priceGHS / bundle.credits).toFixed(3)} per SMS
+                  ~{fmt((billing?.smsBundles?.[bundle.key]?.price ?? bundle.priceGHS) / bundle.credits, billing?.currency, 3)} per SMS
                 </p>
                 <button
                   className="btn-primary"
@@ -854,7 +944,7 @@ export default function Billing() {
       )}
 
       {/* ── HISTORY ── */}
-      {activeTab === 'history' && <PaymentHistory token={token} />}
+      {activeTab === 'history' && <PaymentHistory token={token} onlinePayments={billing?.onlinePayments ? billing.onlineCurrencies : null} />}
 
       {/* Payment Modal */}
       {modal && (
@@ -865,6 +955,7 @@ export default function Billing() {
           smsBundle={modal.smsBundle}
           branchName={modal.branchName}
           token={token}
+          onlinePayments={billing?.onlinePayments ? billing.onlineCurrencies : null}
           onClose={() => setModal(null)}
           onSuccess={() => { setModal(null); fetchBilling() }}
         />
@@ -874,7 +965,9 @@ export default function Billing() {
 }
 
 // ─── HISTORY ROW ─────────────────────────────
-function HistoryRow({ payment, token, onRefresh }) {
+function HistoryRow({ payment, token, onlinePayments: onlineCurrencies, onRefresh }) {
+  const onlinePayments = !!onlineCurrencies?.includes(payment.currency)
+  const [payingOnline, setPayingOnline] = useState(false)
   const [cancelling,   setCancelling]   = useState(false)
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [cancelError,  setCancelError]  = useState('')
@@ -965,7 +1058,7 @@ function HistoryRow({ payment, token, onRefresh }) {
           </p>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>
             Ref: {payment.reference} ·{' '}
-            {new Date(payment.createdAt).toLocaleDateString('en-GH', {
+            {fmtDate(payment.createdAt, {
               day: 'numeric', month: 'short', year: 'numeric'
             })}
           </p>
@@ -984,17 +1077,31 @@ function HistoryRow({ payment, token, onRefresh }) {
           color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0,
           minWidth: 80, textAlign: 'right'
         }}>
-          GHS {payment.amount}
+          {fmt(payment.amount, payment.currency)}
         </p>
 
         {payment.status === 'awaiting_payment' && (
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+            {onlinePayments && (
+              <button
+                className="btn-primary"
+                style={{ fontSize: 'var(--text-xs)', padding: '6px 14px', whiteSpace: 'nowrap' }}
+                disabled={payingOnline}
+                onClick={async () => {
+                  setPayingOnline(true); setCancelError('')
+                  try { await startOnlinePayment(token, payment.reference) }
+                  catch (err) { setCancelError(err.message); setPayingOnline(false) }
+                }}
+              >
+                {payingOnline ? 'Opening…' : 'Pay online'}
+              </button>
+            )}
             <button
-              className="btn-primary"
+              className={onlinePayments ? 'btn-outline' : 'btn-primary'}
               style={{ fontSize: 'var(--text-xs)', padding: '6px 14px', whiteSpace: 'nowrap' }}
               onClick={() => setShowComplete(true)}
             >
-              Complete Payment
+              {onlinePayments ? 'Submit MoMo proof' : 'Complete Payment'}
             </button>
             <button
               className="btn-danger"
@@ -1037,7 +1144,7 @@ function HistoryRow({ payment, token, onRefresh }) {
                     Cancel this request?
                   </p>
                   <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', maxWidth: 260 }}>
-                    Reference <strong>{payment.reference}</strong> — GHS {payment.amount} will be cancelled.
+                    Reference <strong>{payment.reference}</strong> — {fmt(payment.amount, payment.currency)} will be cancelled.
                     You can make a new payment request after.
                   </p>
                 </div>
@@ -1078,15 +1185,23 @@ function HistoryRow({ payment, token, onRefresh }) {
                 padding: 'var(--space-4)', marginBottom: 'var(--space-5)'
               }}>
                 <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--primary)', marginBottom: 6 }}>
-                  Send GHS {payment.amount} via Mobile Money
+                  Send {fmt(payment.amount, payment.currency)}{isMomoPayment(payment) ? ' via Mobile Money' : ''}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)' }}>
-                    Number: <strong>{payment.paymentInstructions?.momoNumber || '0553951396'}</strong>
-                  </p>
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)' }}>
-                    Name: <strong>{payment.paymentInstructions?.accountName || 'Emmanuel Mensah'}</strong>
-                  </p>
+                  {isMomoPayment(payment) ? (
+                    <>
+                      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)' }}>
+                        Number: <strong>{payment.paymentInstructions?.momoNumber || '0553951396'}</strong>
+                      </p>
+                      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)' }}>
+                        Name: <strong>{payment.paymentInstructions?.accountName || 'Emmanuel Mensah'}</strong>
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--primary)' }}>
+                      Pay using: <strong>{payment.paymentInstructions?.manualDetails || 'See the details sent to you by email'}</strong>
+                    </p>
+                  )}
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>
                     Use reference: <strong style={{ color: 'var(--primary)' }}>{payment.reference}</strong>
                   </p>
@@ -1100,7 +1215,7 @@ function HistoryRow({ payment, token, onRefresh }) {
                   </div>
                 )}
                 <div className="form-group">
-                  <label className="form-label">MoMo Transaction ID *</label>
+                  <label className="form-label">Transaction ID *</label>
                   <input
                     value={txnId}
                     onChange={e => { setTxnId(e.target.value); setError('') }}
@@ -1110,7 +1225,7 @@ function HistoryRow({ payment, token, onRefresh }) {
                     style={{ marginTop: 'var(--space-2)' }}
                   />
                   <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    Find this in your MoMo SMS confirmation after sending payment.
+                    Find this in your payment confirmation (MoMo SMS, bank or PayPal receipt).
                   </p>
                 </div>
                 <div className="form-actions" style={{ marginTop: 'var(--space-5)' }}>
@@ -1131,7 +1246,7 @@ function HistoryRow({ payment, token, onRefresh }) {
 }
 
 // ─── PAYMENT HISTORY ──────────────────────────
-function PaymentHistory({ token }) {
+function PaymentHistory({ token, onlinePayments }) {
   const [payments, setPayments] = useState([])
   const [loading,  setLoading]  = useState(true)
 
@@ -1198,6 +1313,7 @@ function PaymentHistory({ token }) {
             key={p._id}
             payment={p}
             token={token}
+            onlinePayments={onlinePayments}
             onRefresh={fetchPayments}
           />
         ))

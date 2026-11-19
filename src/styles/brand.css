@@ -1,0 +1,92 @@
+/* ============================================================
+   MinistryOS public brand layer (landing, login, register, footer)
+   Scoped to .mx so nothing here leaks into the signed-in app.
+   Palette: ink, evergreen, brass. Type: Newsreader + Hanken Grotesk.
+   ============================================================ */
+.mx {
+  --mx-ink: #0B2B26;
+  --mx-green: #0F4A3C;
+  --mx-green-2: #16634F;
+  --mx-brass: #C9973F;
+  --mx-brass-hi: #D8A94F;
+  --mx-brass-deep: #84590F;
+  --mx-bg: #F4F6F5;
+  --mx-white: #FFFFFF;
+  --mx-line: #DCE3E0;
+  --mx-line-2: #C5D0CB;
+  --mx-text: #11201C;
+  --mx-muted: #55665F;
+  --mx-danger: #B42318;
+  --mx-danger-bg: #FDEEEC;
+  --mx-serif: 'Newsreader Variable', 'Newsreader', 'Iowan Old Style', Georgia, serif;
+  --mx-sans: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--mx-sans);
+  color: var(--mx-text);
+  background: var(--mx-bg);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+.mx *, .mx *::before, .mx *::after { box-sizing: border-box; }
+.mx h1, .mx h2, .mx h3, .mx p { color: inherit; font-family: inherit; font-weight: inherit; line-height: inherit; }
+:where(.mx ul) { list-style: none; margin: 0; padding: 0; }
+.mx a { color: inherit; }
+.mx button { font-family: inherit; }
+.mx :focus-visible { outline: 2px solid var(--mx-brass); outline-offset: 2px; }
+.mx .mx-serif { font-family: var(--mx-serif); font-optical-sizing: auto; }
+
+/* ── Mark + wordmark ───────────────────────── */
+.mx .mx-brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
+.mx .mx-mark { display: inline-flex; align-items: center; justify-content: center; background: var(--mx-green); color: var(--mx-brass); flex: none; }
+.mx .mx-wordmark { font: 700 19px/1 var(--mx-sans); letter-spacing: -0.02em; color: var(--mx-text); }
+.mx .mx-brand-light .mx-wordmark { color: #fff; }
+.mx .mx-brand-light .mx-mark { background: rgba(201, 151, 63, 0.14); box-shadow: inset 0 0 0 1px rgba(201, 151, 63, 0.5); }
+
+/* ── Buttons ───────────────────────────────── */
+.mx .mx-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; padding: 0 24px; border-radius: 10px; border: 1px solid transparent;
+  font: 600 15px/1 var(--mx-sans); letter-spacing: -0.005em; text-decoration: none; cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.mx .mx-btn-primary { background: var(--mx-green); color: #fff; }
+.mx .mx-btn-primary:hover { background: var(--mx-green-2); }
+.mx .mx-btn-brass { background: var(--mx-brass); color: var(--mx-ink); }
+.mx .mx-btn-brass:hover { background: var(--mx-brass-hi); }
+.mx .mx-btn-line { background: transparent; color: var(--mx-text); border-color: var(--mx-line-2); }
+.mx .mx-btn-line:hover { border-color: var(--mx-green); }
+.mx .mx-btn-line-light { background: transparent; color: #fff; border-color: rgba(255,255,255,.3); }
+.mx .mx-btn-line-light:hover { border-color: rgba(255,255,255,.7); }
+.mx .mx-btn:disabled { opacity: .55; cursor: not-allowed; }
+.mx .mx-btn-block { width: 100%; }
+.mx .mx-spin { animation: mx-spin 1s linear infinite; }
+@keyframes mx-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mx-spin { animation-duration: 2.4s; } }
+
+/* ── Form fields ───────────────────────────── */
+.mx .fd { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.mx .fd-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font: 600 13.5px/1.2 var(--mx-sans); color: var(--mx-text); }
+.mx .fd-label a { font-weight: 500; font-size: 13px; color: var(--mx-green); text-decoration: none; }
+.mx .fd-label a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.mx .fd-wrap { position: relative; }
+.mx .fd-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #7C8E87; pointer-events: none; display: flex; }
+.mx .fd-input {
+  width: 100%; height: 50px; padding: 0 14px; border: 1px solid var(--mx-line-2); border-radius: 10px;
+  background: #fff; font: 400 15.5px/1 var(--mx-sans); color: var(--mx-text);
+  transition: border-color .15s, box-shadow .15s;
+}
+.mx .fd-input.has-icon { padding-left: 43px; }
+.mx .fd-input.has-action { padding-right: 46px; }
+.mx .fd-input::placeholder { color: #8DA098; }
+.mx .fd-input:hover { border-color: #9FB0A9; }
+.mx .fd-input:focus { outline: none; border-color: var(--mx-green); box-shadow: 0 0 0 3px rgba(15, 74, 60, .15); }
+.mx select.fd-input {
+  appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2355665F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+}
+.mx select.fd-input:invalid, .mx select.fd-input.is-empty { color: #8DA098; }
+.mx .fd-action { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 8px; color: var(--mx-muted); cursor: pointer; }
+.mx .fd-action:hover { background: #EEF2F0; color: var(--mx-text); }
+.mx .fd-hint { font-size: 12.5px; color: var(--mx-muted); }

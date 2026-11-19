@@ -431,7 +431,7 @@ function DepartmentForm({ api, editing, onSuccess, onClose }) {
   const [form, setForm] = useState({
     name:        editing?.name        || '',
     description: editing?.description || '',
-    color:       editing?.color       || '#4F46E5',
+    color:       editing?.color       || '#059669',
   })
 
   const handleSubmit = async (e) => {

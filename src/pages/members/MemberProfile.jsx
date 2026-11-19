@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import useApi from '../../hooks/useApi'
+import { useAuth } from '../../context/AuthContext'
 import {
   ArrowLeft, Edit2, MessageSquare, Phone,
   Mail, MapPin, Calendar, Users,
@@ -8,14 +9,15 @@ import {
 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { formatMoney } from '../../utils/currency'
+import { fmtDate, toDateInput, dateParts } from '../../utils/dates'
 
 // ─── HELPERS ─────────────────────────────────
 const formatDate = (date) => date
-  ? new Date(date).toLocaleDateString('en-GH', { day: 'numeric', month: 'long', year: 'numeric' })
+  ? fmtDate(date, { day: 'numeric', month: 'long', year: 'numeric' })
   : '—'
 
-const formatGHS = (v) =>
-  `GHS ${parseFloat(v || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
+const formatGHS = (v) => formatMoney(v)   // legacy name; formats in the church's currency
 
 const timeAgo = (date) => {
   if (!date) return 'Never'
@@ -28,7 +30,7 @@ const timeAgo = (date) => {
 }
 
 const getAvatarColor = (name = '') => {
-  const colors = ['#4F46E5','#0891B2','#059669','#D97706','#DC2626','#7C3AED','#DB2777','#0F766E']
+  const colors = ['#2563EB','#0891B2','#059669','#D97706','#DC2626','#7C3AED','#DB2777','#0F766E']
   const hash   = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
   return colors[hash % colors.length]
 }
@@ -125,7 +127,7 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
     email:             member.email             || '',
     gender:            member.gender            || '',
     dateOfBirth:       member.dateOfBirth
-      ? new Date(member.dateOfBirth).toISOString().split('T')[0] : '',
+      ? toDateInput(member.dateOfBirth) : '',
     maritalStatus:     member.maritalStatus     || '',
     occupation:        member.occupation        || '',
     address:           member.address           || '',
@@ -134,7 +136,7 @@ function EditMemberModal({ member, api, onSuccess, onClose }) {
     cellGroupId:       String(groupId),
     baptized:          member.baptized          || false,
     baptismDate:       member.baptismDate
-      ? new Date(member.baptismDate).toISOString().split('T')[0] : '',
+      ? toDateInput(member.baptismDate) : '',
     nextOfKinName:     member.nextOfKinName     || '',
     nextOfKinPhone:    member.nextOfKinPhone    || '',
     nextOfKinRelation: member.nextOfKinRelation || '',
@@ -494,10 +496,10 @@ function GivingTab({ memberId, api }) {
   const totalGHS   = parseFloat(data?.totalGHS || 0)
   const now        = new Date()
   const yearTotal  = offerings
-    .filter(o => new Date(o.date).getFullYear() === now.getFullYear())
+    .filter(o => dateParts(o.date).y === now.getFullYear())
     .reduce((sum, o) => sum + (o.amount / 100), 0)
   const monthTotal = offerings
-    .filter(o => { const d = new Date(o.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() })
+    .filter(o => { const p = dateParts(o.date); return p.y === now.getFullYear() && p.m === now.getMonth() })
     .reduce((sum, o) => sum + (o.amount / 100), 0)
 
   return (
@@ -544,6 +546,7 @@ function GivingTab({ memberId, api }) {
 export default function MemberProfile() {
   const { id }               = useParams()
   const { api, branchReady } = useApi()
+  const { can } = useAuth()
   const navigate             = useNavigate()
 
   const [member, setMember]       = useState(null)
@@ -568,10 +571,12 @@ export default function MemberProfile() {
 
   const indicators = []
   if (member.dateOfBirth) {
-    const dob  = new Date(member.dateOfBirth)
-    const now  = new Date()
-    const next = new Date(now.getFullYear(), dob.getMonth(), dob.getDate())
-    const diff = (next - now) / (1000 * 60 * 60 * 24)
+    const dob   = dateParts(member.dateOfBirth)          // a birthday is a calendar date — never shifts a day
+    const now   = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    let next    = new Date(now.getFullYear(), dob.m, dob.d)
+    if (next < today) next = new Date(now.getFullYear() + 1, dob.m, dob.d)   // birthday already passed this year
+    const diff  = Math.round((next - today) / 86400000)
     if (diff >= 0 && diff <= 7)
       indicators.push({ emoji: '🎂', text: 'Birthday this week', bg: '#FCE7F3', color: '#9D174D' })
   }
@@ -580,18 +585,18 @@ export default function MemberProfile() {
   if (member.memberStatus === 'new_convert')
     indicators.push({ emoji: '✨', text: 'New convert',       bg: '#DBEAFE', color: '#1E40AF' })
   if (member.baptized)
-    indicators.push({ emoji: '✝️', text: 'Baptized',          bg: '#EDE9FE', color: '#6D28D9' })
+    indicators.push({ emoji: '✝️', text: 'Baptized',          bg: '#F6EBD0', color: '#84590F' })
 
   const TABS = [
     { id: 'overview',   label: 'Overview',   icon: Users         },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-    { id: 'giving',     label: 'Giving',     icon: Wallet        },
+    ...(can('finance.view') ? [{ id: 'giving', label: 'Giving', icon: Wallet }] : []),
   ]
 
   const quickActions = [
     { label: 'Call Member',  icon: Phone,         action: () => window.open(`tel:${member.phone}`) },
-    { label: 'Send Message', icon: MessageSquare, action: () => navigate('/communications')        },
-    { label: 'Edit Profile', icon: Edit2,         action: () => setShowEdit(true)                  },
+    ...(can('communications.manage') ? [{ label: 'Send Message', icon: MessageSquare, action: () => navigate('/communications') }] : []),
+    ...(can('members.edit') ? [{ label: 'Edit Profile', icon: Edit2, action: () => setShowEdit(true) }] : []),
   ]
 
   return (
@@ -639,8 +644,7 @@ export default function MemberProfile() {
               </div>
             )}
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
-              Member since {new Date(member.joinDate || member.createdAt)
-                .toLocaleDateString('en-GH', { month: 'long', year: 'numeric' })}
+              Member since {fmtDate(member.joinDate || member.createdAt, { month: 'long', year: 'numeric' })}
             </p>
           </div>
 

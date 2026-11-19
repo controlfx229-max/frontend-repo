@@ -1,51 +1,148 @@
 import { useState, useEffect, useRef } from 'react'
-import { ArrowRight, Check, ChevronDown, Play } from 'lucide-react'
-import Logo from '../../components/Logo'
+import {
+  Check, Play, X, Tag, Smartphone, MessageSquareText, Cloud, Users, GitBranch, Palette, UserPlus,
+  Globe, ShieldCheck, Zap, Workflow, FileChartColumn, ArrowRight,
+} from 'lucide-react'
+import BrandMark from '../../components/BrandMark'
+import ArchLines from '../../components/ArchLines'
 import Footer from '../../components/Footer'
+import '../../styles/brand.css'
+import '../../styles/landing.css'
 
 /* ── IMAGE PATHS ──────────────────────────────────────────────────────────────
    Images are located in /public/images/ folder
    ──────────────────────────────────────────────────────────────────────────── */
 const IMG = {
-  dashboard:      '/images/Dashboard.png',
-  dashBranch:     '/images/Settings Branches.png',
-  membersList:    '/images/Members.png',
-  memberProfile:  '/images/Member profile.png',
-  memberAttend:   '/images/Member Attendance.png',
-  memberGiving:   '/images/Member Giving.png',
-  globalSearch:   '/images/Global search.png',
-  attendCreate:   '/images/Attendance service creation.png',
-  attendCheckin:  '/images/Taking attendance.png',
-  attendSearch:   '/images/Marked Attendance.png',
-  departments:    '/images/Departments.png',
-  comms:          '/images/comm.png',
-  reportsFinance: '/images/reports finance.png',
-  reportsAttend:  '/images/Reports Attendance.png',
-  reportsOverview: '/images/Reports Overview.png',
-  settingsTeam:   '/images/Setting AddTeam member.png',
-  settingsAdd:    '/images/Setting AddTeam member.png',
-  settingsBranch: '/images/Settings Branches.png',
-  settingsTheme:  '/images/Theme mode.png',
-  automation:     '/images/Automation.png',
-  automation1:    '/images/Automations 1.png',
-  automation2:    '/images/Automations 2.png',
-  billingPlans:   '/images/Billing plans.png',
-  billingSms:     '/images/Billing sms credits.png',
-  billingBranch:  '/images/Billing branches.png',
+  dashboard:      '/images/Dashboard.webp',
+  dashBranch:     '/images/Branch switcher.webp',
+  membersList:    '/images/Members.webp',
+  memberProfile:  '/images/Member profile.webp',
+  memberAttend:   '/images/Member Attendance.webp',
+  memberGiving:   '/images/Member Giving.webp',
+  globalSearch:   '/images/Global search.webp',
+  attendCreate:   '/images/Attendance service creation.webp',
+  attendSearch:   '/images/Marked Attendance.webp',
+  departments:    '/images/Departments.webp',
+  comms:          '/images/Comm.webp',
+  reportsFinance: '/images/reports finance.webp',
+  reportsAttend:  '/images/Reports Attendance.webp',
+  reportsOverview: '/images/Reports Overview.webp',
+  settingsTeam:   '/images/Setting Team members.webp',
+  settingsAdd:    '/images/Setting AddTeam member.webp',
+  settingsBranch: '/images/Settings Branches.webp',
+  settingsTheme:  '/images/Theme mode.webp',
+  automation1:    '/images/Automations 1.webp',
+  automation2:    '/images/Automations 2.webp',
+  billingPlans:   '/images/Billing plans.webp',
+  billingSms:     '/images/Billing sms credits.webp',
 }
 
-/* ── QUICK NAV SECTIONS ──────────────────────────────────────────────────── */
+/* Intrinsic pixel sizes, so the browser reserves space before lazy images load
+   (otherwise nav scrolling lands short as the page grows underneath it). */
+const IMG_SIZE = {
+  "/images/Attendance service creation.webp": [
+    632,
+    544
+  ],
+  "/images/Automations 1.webp": [
+    1189,
+    820
+  ],
+  "/images/Automations 2.webp": [
+    1189,
+    820
+  ],
+  "/images/Billing plans.webp": [
+    1189,
+    838
+  ],
+  "/images/Billing sms credits.webp": [
+    1189,
+    838
+  ],
+  "/images/Branch switcher.webp": [
+    1189,
+    430
+  ],
+  "/images/Comm.webp": [
+    1189,
+    838
+  ],
+  "/images/Dashboard.webp": [
+    1440,
+    860
+  ],
+  "/images/Departments.webp": [
+    1189,
+    838
+  ],
+  "/images/Global search.webp": [
+    1040,
+    330
+  ],
+  "/images/Marked Attendance.webp": [
+    792,
+    882
+  ],
+  "/images/Member Attendance.webp": [
+    1189,
+    838
+  ],
+  "/images/Member Giving.webp": [
+    1189,
+    838
+  ],
+  "/images/Member profile.webp": [
+    1189,
+    838
+  ],
+  "/images/Members.webp": [
+    1189,
+    720
+  ],
+  "/images/Reports Attendance.webp": [
+    1189,
+    838
+  ],
+  "/images/Reports Overview.webp": [
+    1189,
+    838
+  ],
+  "/images/Setting AddTeam member.webp": [
+    632,
+    637
+  ],
+  "/images/Setting Team members.webp": [
+    1189,
+    720
+  ],
+  "/images/Settings Branches.webp": [
+    1189,
+    760
+  ],
+  "/images/Theme mode.webp": [
+    1189,
+    800
+  ],
+  "/images/reports finance.webp": [
+    1189,
+    838
+  ]
+}
+
+/* ── PRODUCT TOUR INDEX ──────────────────────────────────────────────────── */
 const QUICK_NAV = [
-  { id: 'dashboard',     label: 'Dashboard'     },
-  { id: 'members',       label: 'Members'       },
-  { id: 'profiles',      label: 'Profiles'      },
-  { id: 'attendance',    label: 'Attendance'    },
-  { id: 'departments',   label: 'Departments'   },
+  { id: 'dashboard',      label: 'Dashboard'      },
+  { id: 'members',        label: 'Members'        },
+  { id: 'profiles',       label: 'Profiles'       },
+  { id: 'attendance',     label: 'Attendance'     },
+  { id: 'departments',    label: 'Departments'    },
   { id: 'communications', label: 'Communications' },
-  { id: 'automations',   label: 'Automations'   },
-  { id: 'reports',       label: 'Reports'       },
-  { id: 'settings',      label: 'Settings'      },
-  { id: 'pricing',       label: 'Pricing'       },
+  { id: 'automations',    label: 'Automations'    },
+  { id: 'reports',        label: 'Reports'        },
+  { id: 'settings',       label: 'Settings'       },
+  { id: 'search',         label: 'Global search'  },
+  { id: 'pricing',        label: 'Pricing'        },
 ]
 
 // Standard (non-founding) trial SMS credits — mirrors
@@ -54,75 +151,58 @@ const QUICK_NAV = [
 // numbers themselves always come live from /auth/founding-status.
 const STANDARD_TRIAL_SMS_FALLBACK = 25
 
-/* ── BROWSER FRAME ───────────────────────────────────────────────────────── */
-function BrowserFrame({ src, alt, onZoom }) {
+const PLANS = [
+  { name: 'Starter',    price: 'GHS 200', feats: ['Up to 200 members', '5 staff accounts', '1 branch', '200 SMS credits / month'] },
+  { name: 'Growth',     price: 'GHS 350', badge: 'Most popular', featured: true,
+    feats: ['Up to 500 members', '15 staff accounts', '2 branches', '500 SMS credits / month'] },
+  { name: 'Enterprise', price: 'GHS 500', badge: 'Best value',
+    feats: ['Unlimited members', 'Unlimited staff accounts', '5 branches', '2,000 SMS credits / month'] },
+]
+
+const WHY = [
+  { icon: Smartphone,     title: 'Works on any device',           body: 'Phone, tablet, or laptop. It runs in your browser with no app to download and nothing to install. Open it at home, at church, anywhere.' },
+  { icon: Globe,          title: 'Built for the world',           body: 'Support for multiple currencies, languages, and payment methods. Not one-size-fits-all: it adapts to your market and congregation.' },
+  { icon: ShieldCheck,    title: 'Your data is safe',             body: 'All data is encrypted and backed up automatically. Only your team can access it. MinistryOS never shares or sells your church\'s information.' },
+  { icon: Zap,            title: 'Live in one afternoon',         body: 'Import your member list and go live the same day. Your secretary can set it up, with no IT person and no training course required.' },
+  { icon: Workflow,       title: 'Automations that save hours',   body: 'Birthday wishes, welcome messages, absence follow-ups. Set them once and they run themselves, so members feel cared for even when you\'re busy.' },
+  { icon: FileChartColumn, title: 'Reports your board will love', body: 'Export a full attendance and finance report to PDF with one click. Come to every board meeting with real numbers, not estimates from memory.' },
+]
+
+const TESTIMONIALS = [
+  { q: 'Before MinistryOS, our attendance records were in notebooks. Now we see last Sunday\'s numbers before we leave the building.', name: 'Ps. Emmanuel Asante',  role: 'Senior Pastor, Accra',         init: 'EA' },
+  { q: 'The MoMo giving feature changed everything. Pledges are up because members can now track their own commitments and feel accountable.', name: 'Mrs. Abena Mensah',   role: 'Church Administrator, Kumasi', init: 'AM' },
+  { q: 'We activated the birthday automation and members started calling to say thank you. It costs us nothing and it means everything to them.', name: 'Elder Kwame Boateng', role: 'Church Leader, Takoradi',       init: 'KB' },
+]
+
+/* ── SMALL PIECES ────────────────────────────────────────────────────────── */
+function Shot({ src, alt, onZoom }) {
   return (
-    <div
-      className="lmr-bf lmr-reveal"
-      onClick={() => onZoom && onZoom(src)}
-      style={{
-        borderRadius: 12, overflow: 'hidden', cursor: onZoom ? 'zoom-in' : 'default',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
-        border: '1px solid #E5E7EB', background: '#fff',
-      }}>
-      <div style={{
-        height: 36, background: '#F3F4F6',
-        borderBottom: '1px solid #E5E7EB',
-        display: 'flex', alignItems: 'center', padding: '0 14px', gap: 6,
-      }}>
-        {['#FC5858','#FCBA58','#58FC85'].map((c, i) => (
-          <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
-        ))}
-        <div style={{
-          flex: 1, margin: '0 10px', background: '#fff', borderRadius: 4,
-          height: 20, display: 'flex', alignItems: 'center', padding: '0 8px',
-        }}>
-          <span style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'monospace' }}>
-            ministryosapp.com
-          </span>
-        </div>
-      </div>
-      <img src={src} alt={alt} loading="lazy" className="lmr-bf-img"
-        style={{ width: '100%', display: 'block', background: '#F9FAFB', objectFit: 'contain', maxHeight: 520 }} />
-    </div>
+    <button type="button" className="lp-shot" onClick={() => onZoom(src)} aria-label={`View larger: ${alt}`}>
+      <img src={src} alt={alt} loading="lazy" width={IMG_SIZE[src]?.[0]} height={IMG_SIZE[src]?.[1]} />
+    </button>
   )
 }
 
-/* ── FEATURE ROW ─────────────────────────────────────────────────────────── */
-function FeatureRow({ id, eyebrow, title, body, bullets, img, alt, reverse, accent, bg, onZoom }) {
+function Bullets({ items }) {
   return (
-    <section id={id} style={{ background: bg, padding: '72px 20px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div className={`fr-grid${reverse ? ' fr-rev' : ''}`}>
-          <div className="fr-text lmr-reveal">
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: accent, margin: '0 0 12px' }}>
-              {eyebrow}
-            </p>
-            <h2 style={{ fontSize: 'clamp(22px,3vw,36px)', fontWeight: 900, color: '#111827', letterSpacing: '-0.6px', lineHeight: 1.15, margin: '0 0 14px' }}>
-              {title}
-            </h2>
-            <p style={{ fontSize: 15, color: '#6B7280', lineHeight: 1.75, margin: '0 0 24px' }}>
-              {body}
-            </p>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {bullets.map((b, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 2, background: accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Check size={11} color={accent} strokeWidth={3} />
-                  </div>
-                  <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.65 }}>
-                    {b.bold ? <><strong>{b.bold}</strong>{' '}{b.rest}</> : b}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="fr-screen lmr-reveal">
-            <BrowserFrame src={img} alt={alt} onZoom={onZoom} />
-          </div>
-        </div>
-      </div>
-    </section>
+    <ul className="lp-bul">
+      {items.map((b, i) => (
+        <li key={i}>
+          <Check size={17} strokeWidth={2.2} aria-hidden="true" />
+          <span>{b.bold ? <><strong>{b.bold}</strong>{' '}{b.rest}</> : b}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Spec({ id, title, body, children }) {
+  return (
+    <article id={id} className="lp-art">
+      <h2 className="lp-h2">{title}</h2>
+      <p className="lp-body">{body}</p>
+      {children}
+    </article>
   )
 }
 
@@ -132,11 +212,11 @@ export default function LearnMore() {
   const [memberTab,   setMemberTab]   = useState('overview')
   const [showVideo,   setShowVideo]   = useState(false)
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [active,      setActive]      = useState('dashboard')
   const videoRef = useRef(null)
 
-  // Live founding-church promo status — drives the hero badge/button,
-  // stats strip, and final CTA copy below. This is a PUBLIC page, so
-  // this hits the unauthenticated /auth/founding-status endpoint.
+  // Live founding-church promo status. This is a PUBLIC page, so this hits
+  // the unauthenticated /auth/founding-status endpoint.
   const [founding, setFounding] = useState(null)
 
   useEffect(() => {
@@ -153,41 +233,35 @@ export default function LearnMore() {
   }, [])
 
   useEffect(() => {
-    // Some browsers restore the previous scroll position on load/navigation.
-    // Force this page to always start at the very top so the hero headline
-    // is never hidden behind the sticky nav bars.
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual'
-    }
+    // Always start at the very top so the hero headline is never hidden
+    // behind the sticky nav (some browsers restore the old scroll position).
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
     window.scrollTo(0, 0)
   }, [])
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 50)
-    window.addEventListener('scroll', fn)
+    const fn = () => setScrolled(window.scrollY > 40)
+    fn()
+    window.addEventListener('scroll', fn, { passive: true })
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  // Scroll-reveal: fade/slide in any element tagged .lmr-reveal once it
-  // enters the viewport. Runs after every render so newly-mounted elements
-  // (e.g. after switching member tabs) get observed too.
+  // Highlight the product-tour section currently in view.
   useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('lmr-in')
-          observer.unobserve(entry.target)
-        }
-      })
-    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' })
-    document.querySelectorAll('.lmr-reveal').forEach(el => observer.observe(el))
-    return () => observer.disconnect()
-  })
+    const els = QUICK_NAV.map(n => document.getElementById(n.id)).filter(Boolean)
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id) })
+    }, { rootMargin: '-25% 0px -65% 0px' })
+    els.forEach(el => io.observe(el))
+    return () => io.disconnect()
+  }, [])
 
-  // Lock background scroll while the lightbox is open
+  // Lock background scroll while the lightbox is open, close on Escape.
   useEffect(() => {
     document.body.style.overflow = lightboxSrc ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    const onKey = (e) => { if (e.key === 'Escape') setLightboxSrc(null) }
+    window.addEventListener('keydown', onKey)
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey) }
   }, [lightboxSrc])
 
   const scrollTo = (id) => {
@@ -195,875 +269,343 @@ export default function LearnMore() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // Reveal the <video> element and immediately call .play() on it.
-  // Calling .play() synchronously inside the click handler (rather than
-  // relying on the `autoPlay` attribute, which fires on a later React
-  // render) keeps this tied to the user's click, so Chrome/Edge/Firefox
-  // don't silently mute it as an "unrequested" autoplay.
+  // Reveal the <video> and call .play() inside the click handler so browsers
+  // treat it as user-initiated playback rather than blocked autoplay.
   const handlePlayDemo = () => {
     setShowVideo(true)
-    setTimeout(() => {
-      videoRef.current?.play()
-    }, 0)
+    setTimeout(() => { videoRef.current?.play() }, 0)
   }
 
   const memberTabs = {
     overview: {
-      src:   IMG.memberProfile,
+      src: IMG.memberProfile,
       bullets: [
-        { bold: 'Personal details:', rest: 'Phone, gender, date of birth, marital status — everything in one place.' },
+        { bold: 'Personal details:', rest: 'Phone, gender, date of birth, marital status. Everything in one place.' },
         { bold: 'Church information:', rest: 'Auto-generated Member ID, join date, department, cell group, and baptism status.' },
         { bold: 'Quick actions:', rest: 'Call member, send message, or edit their profile directly from this screen.' },
       ],
     },
     attendance: {
-      src:   IMG.memberAttend,
+      src: IMG.memberAttend,
       bullets: [
-        { bold: 'Attendance rate:', rest: 'See exactly how consistently each member shows up — as a percentage.' },
+        { bold: 'Attendance rate:', rest: 'See exactly how consistently each member shows up, as a percentage.' },
         { bold: 'Consistency bar:', rest: 'A visual progress bar across all services recorded for that member.' },
         { bold: 'Service history:', rest: 'Every service attended or missed, with the exact date and service name.' },
       ],
     },
     giving: {
-      src:   IMG.memberGiving,
+      src: IMG.memberGiving,
       bullets: [
-        { bold: 'Total giving (all time):', rest: 'The complete giving picture for that member — every contribution ever recorded.' },
-        { bold: 'Yearly & monthly view:', rest: 'Filter by this year or this month to see recent giving patterns.' },
+        { bold: 'Total giving (all time):', rest: 'The complete giving picture for that member: every contribution ever recorded.' },
+        { bold: 'Yearly and monthly view:', rest: 'Filter by this year or this month to see recent giving patterns.' },
         { bold: 'Giving statements:', rest: 'Useful for recognising faithful givers or preparing end-of-year acknowledgements.' },
       ],
     },
   }
-
   const mt = memberTabs[memberTab]
 
   const promoActive = founding?.promoActive
   const remaining   = founding?.remaining
 
-  // ── Stats strip data — SMS stat is dynamic ──
-  const statsData = [
-    { val: '3 plans', lbl: 'Starting at GHS 200 / month', color: '#4F46E5' },
-    { val: 'MoMo',     lbl: 'Mobile Money giving built in', color: '#059669' },
+  const facts = [
+    { icon: Tag,               val: '3 plans',  lbl: 'Starting at GHS 200 / month' },
+    { icon: Smartphone,        val: 'MoMo',     lbl: 'Mobile Money giving built in' },
     promoActive
-      ? { val: `${founding.bonusCredits} SMS`, lbl: `Free credits — ${remaining} founding spot${remaining !== 1 ? 's' : ''} left`, color: '#D97706' }
-      : { val: `${STANDARD_TRIAL_SMS_FALLBACK} SMS`, lbl: 'Free trial credits included', color: '#D97706' },
-    { val: '100%', lbl: 'Cloud-based — no app to install', color: '#7C3AED' },
+      ? { icon: MessageSquareText, val: `${founding.bonusCredits} SMS`, lbl: `Free credits. ${remaining} founding spot${remaining !== 1 ? 's' : ''} left` }
+      : { icon: MessageSquareText, val: `${STANDARD_TRIAL_SMS_FALLBACK} SMS`, lbl: 'Free trial credits included' },
+    { icon: Cloud,             val: '100%',     lbl: 'Cloud-based, no app to install' },
   ]
 
   return (
     <>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        .lmr { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; background: #fff; overflow-x: hidden; }
-
-        /* Offset anchored sections so they don't hide under the sticky nav bars */
-        .lmr section[id], .lmr div[id] { scroll-margin-top: 104px; }
-
-        /* ── NAV ── */
-        .lmr-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 210; height: 60px; display: flex; align-items: center; padding: 0 20px; transition: background .2s, box-shadow .2s; background: rgba(255,255,255,.96); backdrop-filter: blur(16px); box-shadow: 0 1px 0 rgba(0,0,0,.07); }
-        .lmr-nav-in { max-width: 1100px; margin: 0 auto; width: 100%; display: flex; align-items: center; justify-content: space-between; }
-        .lmr-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 17px; font-weight: 800; color: #111827; letter-spacing: -.4px; }
-        .lmr-nav-r { display: flex; align-items: center; gap: 8px; }
-        .lmr-nav-link { font-size: 14px; font-weight: 600; color: #374151; text-decoration: none; padding: 6px 10px; border-radius: 8px; transition: background .12s; }
-        .lmr-nav-link:hover { background: #F3F4F6; }
-        .lmr-nav-btn { font-size: 13px; font-weight: 700; color: #fff; background: #4F46E5; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; text-decoration: none; white-space: nowrap; }
-        .lmr-nav-btn:hover { background: #4338CA; }
-
-        /* ── QUICK NAV (clickable jump-to-section bar) ── */
-        .lmr-quicknav { position: fixed; top: 60px; left: 0; right: 0; z-index: 205; background: #fff; border-bottom: 1px solid #EEF0F4; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
-        .lmr-quicknav-in { max-width: 1100px; margin: 0 auto; display: flex; gap: 4px; overflow-x: auto; padding: 8px 20px; scrollbar-width: none; }
-        .lmr-quicknav-in::-webkit-scrollbar { display: none; }
-        .lmr-quicknav-btn { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: #4B5563; background: #F8F7FF; border: 1px solid #EDE9FE; border-radius: 99px; padding: 6px 14px; cursor: pointer; white-space: nowrap; transition: background .12s, color .12s, border-color .12s; }
-        .lmr-quicknav-btn:hover { background: #EEF2FF; color: #4F46E5; border-color: #C7D2FE; }
-
-        /* ── HERO ── */
-        .lmr-hero { background: linear-gradient(155deg,#1E1B4B 0%,#312E81 35%,#4F46E5 70%,#6D28D9 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 152px 20px 48px; position: relative; overflow: hidden; }
-        .lmr-hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px); background-size: 64px 64px; pointer-events: none; }
-        .lmr-hero-glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle,rgba(139,92,246,.3) 0%,transparent 65%); top: 50%; left: 50%; transform: translate(-50%,-60%); pointer-events: none; }
-        .lmr-hero-body { position: relative; z-index: 2; max-width: 840px; width: 100%; }
-        .lmr-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #A5B4FC; background: rgba(99,102,241,.18); border: 1px solid rgba(165,180,252,.3); padding: 6px 14px; border-radius: 99px; margin-bottom: 20px; }
-        .lmr-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #A5B4FC; animation: lmr-pulse 2s infinite; }
-        @keyframes lmr-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-        .lmr-h1 { font-size: clamp(28px,5vw,58px); font-weight: 900; color: #fff; line-height: 1.08; letter-spacing: clamp(-1px,-0.04em,-2.4px); margin-bottom: 16px; }
-        .lmr-h1 em { font-style: normal; background: linear-gradient(90deg,#A5B4FC,#C4B5FD,#F9A8D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .lmr-sub { font-size: clamp(14px,1.6vw,17px); color: rgba(255,255,255,.65); max-width: 540px; margin: 0 auto 28px; line-height: 1.7; }
-        .lmr-hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
-        .lmr-btn-main { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #4F46E5; font-size: 14px; font-weight: 800; padding: 13px 22px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; box-shadow: 0 4px 24px rgba(0,0,0,.2); transition: transform .15s,box-shadow .15s; }
-        .lmr-btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.25); }
-        .lmr-btn-ghost { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,.8); font-size: 14px; font-weight: 600; text-decoration: none; padding: 13px 18px; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; transition: background .15s; }
-        .lmr-btn-ghost:hover { background: rgba(255,255,255,.08); }
-
-        /* Scroll-down affordance so first-timers know there's more below */
-        .lmr-scrolldown { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 6px; }
-        .lmr-scrolldown svg { animation: lmr-bounce 1.6s infinite; }
-        @keyframes lmr-bounce { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(4px); } }
-
-        /* ── DASHBOARD SHOWCASE ── */
-        .lmr-dash-show { background: linear-gradient(180deg,#1E1B4B 0%,#312E81 100%); padding: 0 20px 56px; }
-        .lmr-dash-frame { max-width: 1000px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08); cursor: zoom-in; transition: transform .25s ease, box-shadow .25s ease; }
-        .lmr-dash-frame:hover { transform: translateY(-4px); box-shadow: 0 48px 120px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12); }
-        .lmr-dash-chrome { height: 36px; background: #1F2937; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; padding: 0 14px; gap: 6px; }
-        .lmr-dash-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .lmr-dash-url { flex: 1; margin: 0 10px; background: rgba(255,255,255,.05); border-radius: 4px; height: 20px; display: flex; align-items: center; padding: 0 10px; }
-        .lmr-dash-url span { font-size: 10px; color: rgba(255,255,255,.35); font-family: monospace; }
-        .lmr-dash-cap { text-align: center; color: rgba(255,255,255,.4); font-size: 12px; margin-top: 16px; padding: 0 20px; }
-
-        /* ── DEMO VIDEO (sits right under the dashboard screenshot) ── */
-        .lmr-demo-wrap { max-width: 1000px; margin: 28px auto 0; }
-        .lmr-demo-card { border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); }
-        .lmr-demo-thumb { position: relative; aspect-ratio: 16/9; background: linear-gradient(135deg,#312E81,#4F46E5); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .lmr-demo-play { width: 64px; height: 64px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(0,0,0,.3); transition: transform .15s; }
-        .lmr-demo-thumb:hover .lmr-demo-play { transform: scale(1.08); }
-        .lmr-demo-label { position: absolute; bottom: 14px; left: 16px; color: #fff; font-size: 13px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
-        .lmr-demo-video { width: 100%; aspect-ratio: 16/9; display: block; background: #000; }
-
-        /* ── STATS ── */
-        .lmr-stats { background: #F8F7FF; border-top: 1px solid #EDE9FE; border-bottom: 1px solid #EDE9FE; padding: 48px 20px; }
-        .lmr-stats-g { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(4,1fr); }
-        .lmr-stat { text-align: center; padding: 0 16px; border-right: 1px solid #DDD6FE; }
-        .lmr-stat:last-child { border-right: none; }
-        .lmr-stat-val { font-size: clamp(22px,3.5vw,40px); font-weight: 900; line-height: 1; letter-spacing: -1px; }
-        .lmr-stat-lbl { font-size: 12px; color: #6B7280; margin-top: 6px; font-weight: 500; }
-
-        /* ── FEATURE GRID ── */
-        .fr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
-        .fr-rev .fr-text  { order: 2; }
-        .fr-rev .fr-screen { order: 1; }
-
-        /* ── MEMBER TABS ── */
-        .lmr-tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-        .lmr-tab { font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 99px; border: 1.5px solid #E5E7EB; background: #fff; color: #6B7280; cursor: pointer; transition: all .15s; }
-        .lmr-tab.on { background: #4F46E5; border-color: #4F46E5; color: #fff; }
-
-        /* ── SETTINGS GRID ── */
-        .lmr-set-g { display: grid; grid-template-columns: repeat(2,1fr); gap: 24px; margin-top: 40px; }
-        .lmr-set-label { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 10px; }
-        .lmr-set-caption { font-size: 13px; color: #6B7280; margin-top: 10px; line-height: 1.6; }
-
-        /* ── PRICING ── */
-        .lmr-plans-g { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; max-width: 1000px; margin: 0 auto; }
-        .lmr-plan { background: #fff; border: 1.5px solid #E5E7EB; border-radius: 16px; padding: 28px; position: relative; transition: box-shadow .15s; }
-        .lmr-plan:hover { box-shadow: 0 8px 32px rgba(0,0,0,.07); }
-        .lmr-plan-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 800; padding: 4px 14px; border-radius: 99px; color: #fff; white-space: nowrap; }
-        .lmr-plan-name { font-size: 17px; font-weight: 800; color: #111827; margin-bottom: 6px; }
-        .lmr-plan-price { font-size: 30px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
-        .lmr-plan-per { font-size: 12px; color: #9CA3AF; margin-bottom: 18px; }
-        .lmr-plan-feats { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .lmr-plan-feat { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; }
-        .lmr-plan-btn { display: block; text-align: center; color: #fff; font-weight: 800; font-size: 14px; padding: 12px 0; border-radius: 10px; text-decoration: none; transition: opacity .15s; }
-        .lmr-plan-btn:hover { opacity: .88; }
-
-        /* ── WHY ── */
-        .lmr-why-g { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
-        .lmr-why-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 16px; padding: 24px; transition: box-shadow .15s,transform .15s; }
-        .lmr-why-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.07); transform: translateY(-2px); }
-        .lmr-why-title { font-size: 15px; font-weight: 800; color: #111827; margin-bottom: 8px; }
-        .lmr-why-body { font-size: 13.5px; color: #6B7280; line-height: 1.7; }
-
-        /* ── TESTIMONIALS ── */
-        .lmr-testi-sec { background: linear-gradient(155deg,#1E1B4B 0%,#3730A3 50%,#4F46E5 100%); padding: 80px 20px; }
-        .lmr-testi-g { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; max-width: 1100px; margin: 40px auto 0; }
-        .lmr-testi-card { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 24px; }
-        .lmr-testi-q { font-size: 14px; line-height: 1.75; color: rgba(255,255,255,.78); font-style: italic; margin-bottom: 18px; }
-        .lmr-testi-p { display: flex; align-items: center; gap: 12px; }
-        .lmr-testi-av { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0; }
-        .lmr-testi-name { font-size: 13px; font-weight: 700; color: #fff; }
-        .lmr-testi-role { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 2px; }
-
-        /* ── CTA ── */
-        .lmr-cta { padding: 80px 20px; background: #fff; text-align: center; }
-        .lmr-cta-in { max-width: 620px; margin: 0 auto; }
-        .lmr-cta-h2 { font-size: clamp(26px,4vw,50px); font-weight: 900; color: #111827; letter-spacing: -1.2px; line-height: 1.1; margin-bottom: 16px; }
-        .lmr-cta-h2 em { font-style: normal; color: #4F46E5; }
-        .lmr-cta-body { font-size: 16px; color: #6B7280; line-height: 1.7; margin-bottom: 36px; }
-        .lmr-cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-        .lmr-cta-primary { display: inline-flex; align-items: center; gap: 8px; background: #4F46E5; color: #fff; font-size: 14px; font-weight: 800; padding: 14px 26px; border-radius: 12px; text-decoration: none; transition: background .15s,transform .15s; }
-        .lmr-cta-primary:hover { background: #4338CA; transform: translateY(-1px); }
-        .lmr-cta-secondary { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #374151; font-size: 14px; font-weight: 700; padding: 14px 24px; border-radius: 12px; text-decoration: none; border: 1.5px solid #E5E7EB; transition: border-color .15s; }
-        .lmr-cta-secondary:hover { border-color: #C7D2FE; color: #4F46E5; }
-        .lmr-cta-note { font-size: 13px; color: #9CA3AF; margin-top: 18px; }
-
-        /* ── DIVIDER ── */
-        .lmr-div { height: 1px; background: #F3F4F6; max-width: 1100px; margin: 0 auto; }
-
-        /* ── HELPERS ── */
-        .lmr-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-        .lmr-h2 { font-size: clamp(24px,3vw,42px); font-weight: 900; color: #111827; letter-spacing: -0.8px; line-height: 1.1; margin-bottom: 14px; }
-        .lmr-body { font-size: 15px; color: #6B7280; line-height: 1.75; }
-
-        /* ── HOVER LIFT ON SCREENSHOTS ── */
-        .lmr-bf { transition: transform .25s ease, box-shadow .25s ease; }
-        .lmr-bf:hover { transform: translateY(-4px) scale(1.012); box-shadow: 0 28px 70px rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.08); }
-
-        /* ── SCROLL REVEAL ── */
-        .lmr-reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
-        .lmr-reveal.lmr-in { opacity: 1; transform: translateY(0); }
-        @media (prefers-reduced-motion: reduce) {
-          .lmr-reveal { opacity: 1; transform: none; transition: none; }
-        }
-
-        /* ── LIGHTBOX (tap/click to zoom any screenshot) ── */
-        .lmr-lightbox { position: fixed; inset: 0; z-index: 500; background: rgba(15,15,25,.92); display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; animation: lmr-fade-in .2s ease; }
-        @keyframes lmr-fade-in { from { opacity: 0; } to { opacity: 1; } }
-        .lmr-lightbox img { max-width: 96vw; max-height: 92vh; width: auto; height: auto; border-radius: 10px; box-shadow: 0 30px 90px rgba(0,0,0,.5); cursor: default; touch-action: pinch-zoom; }
-        .lmr-lightbox-close { position: absolute; top: 20px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .lmr-lightbox-close:hover { background: rgba(255,255,255,.2); }
-        .lmr-lightbox-hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.5); font-size: 12px; font-weight: 500; }
-
-        /* ══════════════════════════════════════
-           RESPONSIVE — TABLET (≤900px)
-        ══════════════════════════════════════ */
-        @media (max-width: 900px) {
-
-          /* Feature rows: always stack text first, then image */
-          .fr-grid { grid-template-columns: 1fr; gap: 28px; }
-          .fr-rev .fr-text  { order: 1; }
-          .fr-rev .fr-screen { order: 2; }
-          .fr-text  { order: 1; }
-          .fr-screen { order: 2; }
-
-          /* Stats: 2×2 grid */
-          .lmr-stats-g { grid-template-columns: repeat(2,1fr); gap: 0; }
-          .lmr-stat { border-right: none; border-bottom: 1px solid #DDD6FE; padding: 20px 16px; }
-          .lmr-stat:nth-child(1),
-          .lmr-stat:nth-child(2) { border-right: 1px solid #DDD6FE; }
-          .lmr-stat:nth-child(2) { border-right: none; }
-          .lmr-stat:nth-child(3) { border-right: 1px solid #DDD6FE; }
-          .lmr-stat:last-child { border-bottom: none; border-right: none; }
-
-          /* Why: 1 col */
-          .lmr-why-g { grid-template-columns: 1fr; }
-
-          /* Pricing: 1 col */
-          .lmr-plans-g { grid-template-columns: 1fr; max-width: 440px; }
-
-          /* Testimonials: 1 col */
-          .lmr-testi-g { grid-template-columns: 1fr; }
-
-          /* Settings: 1 col */
-          .lmr-set-g { grid-template-columns: 1fr; }
-
-          /* Nav link */
-          .lmr-nav-link { display: none; }
-
-          .lmr-hero { padding-top: 132px; }
-          .lmr-quicknav { top: 56px; }
-          .lmr section[id], .lmr div[id] { scroll-margin-top: 96px; }
-        }
-
-        /* ══════════════════════════════════════
-           RESPONSIVE — MOBILE (≤600px)
-        ══════════════════════════════════════ */
-        @media (max-width: 600px) {
-          .lmr-nav { height: 52px; }
-          /* Sticky (not fixed, not static): it sits naturally below the
-             main nav on load — so it never overlaps the hero — but then
-             sticks to the top of the screen once the page scrolls past it,
-             so the jump-to-section list stays usable while browsing. */
-          .lmr-quicknav { position: sticky; top: 52px; margin-top: 52px; z-index: 205; }
-          .lmr-quicknav-in { padding: 7px 14px; }
-          .lmr-quicknav-btn { font-size: 11.5px; padding: 5px 12px; }
-
-          .lmr-hero { padding: 24px 16px 36px; }
-          .lmr-h1 { font-size: clamp(26px,7vw,34px); line-height: 1.15; }
-          .lmr-hero-btns { flex-direction: column; align-items: stretch; }
-          .lmr-btn-main, .lmr-btn-ghost { justify-content: center; }
-
-          .lmr-dash-show { padding: 0 12px 40px; }
-
-          /* On small screens, cap the browser frame image height so it doesn't
-             dwarf the screen — raised from 280px so it's actually legible,
-             and it's tappable to zoom in further anyway. */
-          .lmr-dash-frame img { max-height: 400px; }
-          .lmr-demo-wrap { margin-top: 20px; }
-
-          /* Feature section paddings */
-          section { padding-top: 48px !important; padding-bottom: 48px !important; padding-left: 16px !important; padding-right: 16px !important; }
-
-          /* Browser frame images: cap height on mobile so they don't scroll
-             forever, but raised from 340px → 480px for legibility. Zoom
-             (lightbox) handles anyone who wants to see more detail. */
-          .lmr-bf-img { max-height: 480px !important; }
-
-          /* No hover lift on touch devices — avoids a "stuck" hover state */
-          .lmr-bf:hover, .lmr-dash-frame:hover { transform: none; box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06); }
-
-          /* Stats strip */
-          .lmr-stats { padding: 32px 16px; }
-          .lmr-stats-g { grid-template-columns: 1fr 1fr; }
-
-          /* Pricing plans full width */
-          .lmr-plans-g { max-width: 100%; }
-          .lmr-plan { padding: 22px 18px; }
-
-          /* Why cards */
-          .lmr-why-g { gap: 14px; }
-
-          /* Testimonials */
-          .lmr-testi-sec { padding: 56px 16px; }
-
-          /* CTA */
-          .lmr-cta { padding: 60px 16px; }
-          .lmr-cta-btns { flex-direction: column; align-items: stretch; }
-          .lmr-cta-primary, .lmr-cta-secondary { justify-content: center; }
-
-          /* Settings */
-          .lmr-set-g { grid-template-columns: 1fr; gap: 32px; margin-top: 28px; }
-
-          .lmr section[id], .lmr div[id] { scroll-margin-top: 88px; }
-
-          /* Lightbox fills the whole screen on mobile, no rounded corners */
-          .lmr-lightbox img { max-width: 100vw; max-height: 100vh; border-radius: 0; }
-        }
-      `}</style>
-
-      <div className="lmr">
+      <div className="mx lp">
 
         {/* ── NAV ── */}
-        <nav className="lmr-nav">
-          <div className="lmr-nav-in">
-            <a href="/" className="lmr-logo">
-              <Logo size={30} showText={false} />
-              MinistryOS
-            </a>
-            <div className="lmr-nav-r">
-              <a href="/login"    className="lmr-nav-link">Sign in</a>
-              <a href="/register" className="lmr-nav-btn">Get started free</a>
+        <header className={`lp-nav${scrolled ? ' is-solid' : ''}`}>
+          <div className="lp-nav-in">
+            <a href="/" aria-label="MinistryOS home"><BrandMark tone={scrolled ? 'dark' : 'light'} size={34} /></a>
+            <nav className="lp-nav-links" aria-label="Sections">
+              <button onClick={() => scrollTo('members')}>Features</button>
+              <button onClick={() => scrollTo('pricing')}>Pricing</button>
+            </nav>
+            <div className="lp-nav-cta">
+              <a href="/login" className="lp-nav-signin">Sign in</a>
+              <a href="/register" className="mx-btn mx-btn-brass lp-nav-btn">Get started free</a>
             </div>
           </div>
-        </nav>
-
-        {/* ── QUICK NAV: clickable jump-to-section list ── */}
-        <div className="lmr-quicknav">
-          <div className="lmr-quicknav-in">
-            {QUICK_NAV.map(({ id, label }) => (
-              <button key={id} className="lmr-quicknav-btn" onClick={() => scrollTo(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        </header>
 
         {/* ── HERO ── */}
-        <section className="lmr-hero">
-          <div className="lmr-hero-grid" />
-          <div className="lmr-hero-glow" />
-          <div className="lmr-hero-body">
-
-            {/* Founding-promo urgency badge — only rendered while spots
-                remain, so it never shows stale scarcity messaging after
-                the launch batch is full. */}
-            {promoActive && (
-              <div className="lmr-badge">
-                <span className="lmr-badge-dot" />
-                Only {remaining} founding spot{remaining !== 1 ? 's' : ''} left — {founding.bonusCredits} free SMS credits
+        <section className="lp-hero" id="dashboard">
+          <ArchLines className="lp-hero-arches" />
+          <div className="lp-hero-in">
+            <div className="lp-hero-copy">
+              <h1 className="lp-h1">Your church deserves software that works.</h1>
+              <p className="lp-lede">
+                MinistryOS replaces notebooks, WhatsApp groups, and scattered spreadsheets with
+                one clean platform your entire leadership team can actually use, from Sunday morning to board meeting.
+              </p>
+              <div className="lp-cta-row">
+                <a href="/register" className="mx-btn mx-btn-brass">
+                  {promoActive ? `Start free: ${founding.bonusCredits} SMS included` : 'Start free: 30-day trial'}
+                </a>
+                <a href="/login" className="mx-btn mx-btn-line-light">Sign into your account</a>
               </div>
-            )}
-
-            <h1 className="lmr-h1">
-              Your church deserves<br /><em>software that works.</em>
-            </h1>
-            <p className="lmr-sub">
-              MinistryOS replaces notebooks, WhatsApp groups, and scattered spreadsheets with
-              one clean platform your entire leadership team can actually use —
-              from Sunday morning to board meeting.
-            </p>
-            <div className="lmr-hero-btns">
-              <a href="/register" className="lmr-btn-main">
-                {promoActive
-                  ? <>Start free — {founding.bonusCredits} SMS included <ArrowRight size={16} /></>
-                  : <>Start free — 30-day trial <ArrowRight size={16} /></>}
-              </a>
-              <a href="/login" className="lmr-btn-ghost">
-                Sign into your account
-              </a>
+              {/* Founding-promo scarcity line: only rendered while spots remain. */}
+              {promoActive && (
+                <p className="lp-live">
+                  <i aria-hidden="true" />
+                  Only {remaining} founding spot{remaining !== 1 ? 's' : ''} left, with {founding.bonusCredits} free SMS credits
+                </p>
+              )}
             </div>
-            <button className="lmr-scrolldown" onClick={() => scrollTo('dashboard')}>
-              See it in action <ChevronDown size={14} />
+            <button type="button" className="lp-hero-shot" onClick={() => setLightboxSrc(IMG.dashboard)} aria-label="View larger: MinistryOS dashboard">
+              <img src={IMG.dashboard} alt="MinistryOS dashboard showing members, attendance and giving" width={IMG_SIZE[IMG.dashboard][0]} height={IMG_SIZE[IMG.dashboard][1]} />
             </button>
           </div>
         </section>
 
-        {/* ── DASHBOARD SCREENSHOT ── */}
-        <div className="lmr-dash-show" id="dashboard">
-          <div className="lmr-dash-frame" onClick={() => setLightboxSrc(IMG.dashboard)}>
-            <div className="lmr-dash-chrome">
-              <div className="lmr-dash-dot" style={{ background: '#FC5858' }} />
-              <div className="lmr-dash-dot" style={{ background: '#FCBA58' }} />
-              <div className="lmr-dash-dot" style={{ background: '#58FC85' }} />
-              <div className="lmr-dash-url"><span>ministryosapp.com/dashboard</span></div>
-            </div>
-            <img src={IMG.dashboard} alt="MinistryOS Dashboard" style={{ width: '100%', display: 'block', background: '#F9FAFB', objectFit: 'contain', maxHeight: 520 }} />
-          </div>
-          <p className="lmr-dash-cap">The Dashboard — your church's pulse, every time you open the app</p>
-
-          {/* Demo video — sits right under the dashboard screenshot, as requested.
-              Fixed: video is served as /videos/ministryos-demo.mp4 (converted from
-              the original .mov for cross-browser compatibility), and playback is
-              triggered via an explicit videoRef.current.play() call inside the click
-              handler rather than the `autoPlay` attribute — this keeps it tied to the
-              user's click so browsers don't silently mute it as an unrequested autoplay. */}
-          <div className="lmr-demo-wrap">
-            <div className="lmr-demo-card">
-              {showVideo ? (
-                <video
-                  ref={videoRef}
-                  className="lmr-demo-video"
-                  src="/videos/ministryos-demo.mp4"
-                  controls
-                  preload="metadata"
-                />
-              ) : (
-                <div className="lmr-demo-thumb" onClick={handlePlayDemo}>
-                  <div className="lmr-demo-play">
-                    <Play size={24} color="#4F46E5" fill="#4F46E5" style={{ marginLeft: 2 }} />
-                  </div>
-                  <span className="lmr-demo-label">▶ Watch the 6-minute demo</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── STATS STRIP ── */}
-        <div className="lmr-stats">
-          <div className="lmr-stats-g">
-            {statsData.map(({ val, lbl, color }, i) => (
-              <div key={i} className="lmr-stat">
-                <div className="lmr-stat-val" style={{ color }}>{val}</div>
-                <div className="lmr-stat-lbl">{lbl}</div>
-              </div>
+        {/* ── FACTS ── */}
+        <section className="lp-facts" aria-label="At a glance">
+          <ul className="lp-facts-in">
+            {facts.map(({ icon: Icon, val, lbl }) => (
+              <li key={lbl}>
+                <Icon size={22} strokeWidth={1.5} aria-hidden="true" />
+                <div><b>{val}</b><span>{lbl}</span></div>
+              </li>
             ))}
+          </ul>
+        </section>
+
+        {/* ── DEMO ── */}
+        <section className="lp-demo">
+          <div className="lp-demo-head">
+            <h2 className="lp-h2">Six minutes from login to Sunday report.</h2>
+            <p className="lp-body">The dashboard is your church's pulse, every time you open the app. Watch the full walkthrough.</p>
           </div>
-        </div>
+          <div className="lp-demo-card">
+            {showVideo ? (
+              <video ref={videoRef} className="lp-demo-video" src="/videos/ministryos-demo.mp4" controls preload="metadata" />
+            ) : (
+              <button type="button" className="lp-demo-thumb" onClick={handlePlayDemo} style={{ backgroundImage: `url("${IMG.reportsOverview}")` }}>
+                <span className="lp-demo-play"><Play size={26} fill="currentColor" strokeWidth={0} aria-hidden="true" /></span>
+                <span className="lp-demo-label">Watch the 6-minute demo</span>
+              </button>
+            )}
+          </div>
+        </section>
 
-        {/* ── FEATURE 01 — MEMBERS LIST ── */}
-        <FeatureRow
-          id="members"
-          eyebrow="01 · Member Management"
-          title="Every member, fully known."
-          body="No more notebooks or scattered contact lists. MinistryOS gives every church member a complete digital profile — searchable by your whole team from any device."
-          bullets={[
-            { bold: 'Searchable directory:', rest: 'Find any member instantly by name or phone number.' },
-            { bold: 'Unique Member IDs:', rest: 'Every person gets an auto-generated ID (MIN-0040) for easy reference.' },
-            { bold: 'Department & cell group:', rest: 'See which team and group each person belongs to at a glance.' },
-            { bold: 'Active / Inactive status:', rest: 'Know who is engaged and who needs a follow-up call.' },
-          ]}
-          img={IMG.membersList}
-          alt="Members Directory"
-          accent="#4F46E5"
-          bg="#fff"
-          onZoom={setLightboxSrc}
-        />
+        {/* ── PRODUCT TOUR ── */}
+        <section className="lp-tour">
+          <div className="lp-tour-in">
+            <aside className="lp-index" aria-label="Product tour">
+              <ul>
+                {QUICK_NAV.map(({ id, label }) => (
+                  <li key={id}>
+                    <button className={active === id ? 'is-on' : ''} onClick={() => scrollTo(id)} aria-current={active === id ? 'true' : undefined}>
+                      {label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </aside>
 
-        <div className="lmr-div" />
+            <div className="lp-tour-body">
 
-        {/* ── FEATURE 02 — MEMBER PROFILE (tabbed) ── */}
-        <section id="profiles" style={{ background: '#F8F7FF', padding: '72px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div className="fr-grid fr-rev">
-              <div className="fr-text lmr-reveal">
-                <p className="lmr-eyebrow" style={{ color: '#4F46E5', margin: '0 0 12px' }}>02 · Member Profiles</p>
-                <h2 className="lmr-h2">Three views of every person.</h2>
-                <p className="lmr-body" style={{ marginBottom: 20 }}>
-                  Click any member and get their complete story — personal details, attendance history,
-                  and giving record — all in one profile with three clean tabs.
-                </p>
-                <div className="lmr-tab-bar">
-                  {[
-                    { id: 'overview',   label: 'Overview'   },
-                    { id: 'attendance', label: 'Attendance' },
-                    { id: 'giving',     label: 'Giving'     },
-                  ].map(t => (
-                    <button key={t.id} className={`lmr-tab${memberTab === t.id ? ' on' : ''}`}
-                      onClick={() => setMemberTab(t.id)}>
+              <Spec id="members" title="Every member, fully known."
+                body="No more notebooks or scattered contact lists. MinistryOS gives every church member a complete digital profile, searchable by your whole team from any device.">
+                <Shot src={IMG.membersList} alt="Members directory" onZoom={setLightboxSrc} />
+                <Bullets items={[
+                  { bold: 'Searchable directory:', rest: 'Find any member instantly by name or phone number.' },
+                  { bold: 'Unique Member IDs:', rest: 'Every person gets an auto-generated ID (MIN-0249) for easy reference.' },
+                  { bold: 'Department and cell group:', rest: 'See which team and group each person belongs to at a glance.' },
+                  { bold: 'Active / Inactive status:', rest: 'Know who is engaged and who needs a follow-up call.' },
+                ]} />
+              </Spec>
+
+              <Spec id="profiles" title="Three views of every person."
+                body="Click any member and get their complete story: personal details, attendance history, and giving record, all in one profile with three clean tabs.">
+                <div className="lp-tabs" role="tablist" aria-label="Member profile views">
+                  {[{ id: 'overview', label: 'Overview' }, { id: 'attendance', label: 'Attendance' }, { id: 'giving', label: 'Giving' }].map(t => (
+                    <button key={t.id} role="tab" aria-selected={memberTab === t.id}
+                      className={memberTab === t.id ? 'is-on' : ''} onClick={() => setMemberTab(t.id)}>
                       {t.label}
                     </button>
                   ))}
                 </div>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {mt.bullets.map((b, i) => (
-                    <li key={i} style={{ display: 'flex', gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                        <Check size={11} color="#4F46E5" strokeWidth={3} />
-                      </div>
-                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.65 }}>
-                        <strong>{b.bold}</strong>{' '}{b.rest}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="fr-screen lmr-reveal">
-                <BrowserFrame src={mt.src} alt="Member Profile" onZoom={setLightboxSrc} />
-              </div>
-            </div>
-          </div>
-        </section>
+                <Shot src={mt.src} alt="Member profile" onZoom={setLightboxSrc} />
+                <Bullets items={mt.bullets} />
+              </Spec>
 
-        <div className="lmr-div" />
-
-        {/* ── FEATURE 03 — ATTENDANCE ── */}
-        <FeatureRow
-          id="attendance"
-          eyebrow="03 · Attendance Tracking"
-          title="Mark attendance in under a minute."
-          body="Create a service, search for each member by name or member ID, and tap to mark them present. MinistryOS handles the counting, history, and reporting automatically."
-          bullets={[
-            { bold: 'Create any service type:', rest: 'Sunday, Prayer Night, Special Service — name it whatever you want.' },
-            { bold: 'Quick check-in search:', rest: 'Type a name, phone number, or member ID to find anyone instantly.' },
-            { bold: '"Mark All Present" button:', rest: 'One tap marks everyone present — then adjust for absences.' },
-            { bold: 'Live count updates:', rest: 'See present and absent numbers updating in real time as you tap.' },
-          ]}
-          img={IMG.attendSearch}
-          alt="Quick Check-in"
-          accent="#059669"
-          bg="#fff"
-          onZoom={setLightboxSrc}
-        />
-
-        <div className="lmr-div" />
-
-        {/* ── ATTENDANCE: Create service ── */}
-        <section style={{ background: '#F8F7FF', padding: '64px 20px' }}>
-          <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-            <p className="lmr-eyebrow" style={{ color: '#059669', marginBottom: 12 }}>Creating a service takes 30 seconds</p>
-            <h3 style={{ fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 800, color: '#111827', marginBottom: 12, letterSpacing: '-.4px' }}>
-              Pick the type, set the date, and go.
-            </h3>
-            <p className="lmr-body" style={{ marginBottom: 28, maxWidth: 500, margin: '0 auto 28px' }}>
-              Service Type, Custom Name, Date, Time — that's all you need. Hit "Create Service" and you're ready to start marking attendance.
-            </p>
-            <BrowserFrame src={IMG.attendCreate} alt="Create New Service" onZoom={setLightboxSrc} />
-          </div>
-        </section>
-
-        <div className="lmr-div" />
-
-        {/* ── FEATURE 04 — DEPARTMENTS ── */}
-        <FeatureRow
-          id="departments"
-          eyebrow="04 · Departments & Cell Groups"
-          title="Structure your church, cleanly."
-          body="Create departments like Media, Protocol, or Worship. Assign a leader, add members, and expand to see everyone inside. Cell groups live separately — not buried under departments."
-          bullets={[
-            { bold: 'Colour-coded departments:', rest: 'Each department has its own colour for quick visual identification.' },
-            { bold: 'Department leader:', rest: 'Assign a leader with a crown badge — instantly visible to the whole team.' },
-            { bold: 'Members list per department:', rest: 'Expand any department to see all members with phone numbers.' },
-            { bold: 'General Cell Groups:', rest: 'A separate section for cell groups — not nested inside departments.' },
-          ]}
-          img={IMG.departments}
-          alt="Departments and Cell Groups"
-          accent="#7C3AED"
-          bg="#fff"
-          reverse
-          onZoom={setLightboxSrc}
-        />
-
-        <div className="lmr-div" />
-
-        {/* ── FEATURE 05 — COMMUNICATIONS ── */}
-        <FeatureRow
-          id="communications"
-          eyebrow="05 · Communications"
-          title="Reach your whole church with one SMS."
-          body="Type your message, pick your audience, and send. MinistryOS shows you exactly how many people will receive it before you hit send — no guessing, no wasted credits."
-          bullets={[
-            { bold: 'Target by status:', rest: 'Send to all active members, inactive members, or everyone.' },
-            { bold: 'Target by department:', rest: 'Message only the Media team, or Protocol — whoever you choose.' },
-            { bold: 'Personalise automatically:', rest: 'Use {{firstName}} and MinistryOS fills in each person\'s name.' },
-            { bold: 'Recipient preview:', rest: '"4 recipients will receive this message" — you always know before sending.' },
-          ]}
-          img={IMG.comms}
-          alt="Communications"
-          accent="#EC4899"
-          bg="#F8F7FF"
-          onZoom={setLightboxSrc}
-        />
-
-        <div className="lmr-div" />
-
-        {/* ── FEATURE 06 — AUTOMATIONS ── */}
-        <section id="automations" style={{ background: '#fff', padding: '72px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div className="fr-grid fr-rev">
-              <div className="fr-text lmr-reveal">
-                <p className="lmr-eyebrow" style={{ color: '#D97706', margin: '0 0 12px' }}>06 · Smart Automations</p>
-                <h2 className="lmr-h2">Set it once. It runs itself.</h2>
-                <p className="lmr-body" style={{ marginBottom: 24 }}>
-                  Birthday wishes, absence follow-ups, event reminders, and welcome messages for new members —
-                  all triggered automatically, with full control to preview, pause, or run any of them manually.
-                </p>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {[
-                    { bold: 'Consecutive Absence Alert:', rest: 'Automatically reaches out to members who have missed a number of services in a row.' },
-                    { bold: 'Birthday Wishes:', rest: 'Sends a birthday message to every member automatically, every day at 8AM.' },
-                    { bold: 'Event Reminders & New Member Welcome:', rest: 'Reminders fire before upcoming events, and welcome messages send the instant a new member is added.' },
-                    { bold: 'Full visibility:', rest: 'See last run time, total messages sent, and active/inactive status for every automation at a glance.' },
-                  ].map((b, i) => (
-                    <li key={i} style={{ display: 'flex', gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                        <Check size={11} color="#D97706" strokeWidth={3} />
-                      </div>
-                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.65 }}>
-                        <strong>{b.bold}</strong>{' '}{b.rest}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="fr-screen lmr-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <BrowserFrame src={IMG.automation1} alt="Automations Overview" onZoom={setLightboxSrc} />
-                <BrowserFrame src={IMG.automation2} alt="Automations List" onZoom={setLightboxSrc} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="lmr-div" />
-
-        {/* ── FEATURE 07 — REPORTS ── */}
-        <section id="reports" style={{ background: '#fff', padding: '72px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div className="fr-grid">
-              <div className="fr-text lmr-reveal">
-                <p className="lmr-eyebrow" style={{ color: '#0891B2', margin: '0 0 12px' }}>07 · Reports & Analytics</p>
-
-                <h2 className="lmr-h2">See your church's health clearly.</h2>
-                <p className="lmr-body" style={{ marginBottom: 24 }}>
-                  Four report tabs — Overview, Members, Attendance, and Finance — give your leadership
-                  team the numbers they need to make better decisions and walk into board meetings prepared.
-                </p>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {[
-                    { bold: 'Finance report:', rest: 'Total income GHS 120,317 vs expenses GHS 7,300 — with income breakdown by category.' },
-                    { bold: 'Attendance report:', rest: 'Average rate per service, and a leaderboard of your most consistent attenders.' },
-                    { bold: 'Consistent attenders:', rest: 'Ranked by services attended — great for recognising and appreciating faithful members.' },
-                    { bold: 'Export to PDF:', rest: 'One click exports the full report — ready for printing or sharing at a board meeting.' },
-                  ].map((b, i) => (
-                    <li key={i} style={{ display: 'flex', gap: 10 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#E0F2FE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                        <Check size={11} color="#0891B2" strokeWidth={3} />
-                      </div>
-                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.65 }}>
-                        <strong>{b.bold}</strong>{' '}{b.rest}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="fr-screen lmr-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <BrowserFrame src={IMG.reportsFinance} alt="Finance Report" onZoom={setLightboxSrc} />
-                <BrowserFrame src={IMG.reportsAttend}  alt="Attendance Report" onZoom={setLightboxSrc} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="lmr-div" />
-
-        {/* ── FEATURE 07 — SETTINGS 2×2 ── */}
-        <section id="settings" style={{ background: '#F8F7FF', padding: '72px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>08 · Settings & Administration</p>
-            <h2 className="lmr-h2">Built for how churches are actually run.</h2>
-            <p className="lmr-body" style={{ maxWidth: 580 }}>
-              Give each staff member their own login with the right access level. Manage multiple branches.
-              Customise the look. MinistryOS adapts to your church's structure — not the other way around.
-            </p>
-            <div className="lmr-set-g">
-              {[
-                {
-                  label:   '👥 Team Members — control who has access',
-                  src:     IMG.settingsTeam,
-                  alt:     'Team Members',
-                  caption: 'Add staff with roles: Pastor, Admin / Secretary, Treasurer, or Cell Leader. Each role sees only what they need to.',
-                },
-                {
-                  label:   '🏛️ Branches — manage multiple locations',
-                  src:     IMG.settingsBranch,
-                  alt:     'Church Branches',
-                  caption: 'Running multiple branches? Each has its own data. Switch between them instantly from the top bar.',
-                },
-                {
-                  label:   '🎨 Appearance — Light, Dark, and your brand colour',
-                  src:     IMG.settingsTheme,
-                  alt:     'Theme Settings',
-                  caption: 'Choose Light or Dark mode and pick your church\'s brand colour — applied across every button and highlight.',
-                },
-                {
-                  label:   '➕ Adding a team member takes 30 seconds',
-                  src:     IMG.settingsAdd,
-                  alt:     'Add Team Member',
-                  caption: 'Name, email, role, temporary password — done. They log in and start working immediately.',
-                },
-              ].map(({ label, src, alt, caption }) => (
-                <div key={label} className="lmr-reveal">
-                  <p className="lmr-set-label">{label}</p>
-                  <BrowserFrame src={src} alt={alt} onZoom={setLightboxSrc} />
-                  <p className="lmr-set-caption">{caption}</p>
+              <Spec id="attendance" title="Mark attendance in under a minute."
+                body="Create a service, search for each member by name or member ID, and tap to mark them present. MinistryOS handles the counting, history, and reporting automatically.">
+                <Shot src={IMG.attendSearch} alt="Quick check-in" onZoom={setLightboxSrc} />
+                <Bullets items={[
+                  { bold: 'Create any service type:', rest: 'Sunday, Prayer Night, Special Service. Name it whatever you want.' },
+                  { bold: 'Quick check-in search:', rest: 'Type a name, phone number, or member ID to find anyone instantly.' },
+                  { bold: '"Mark All Present" button:', rest: 'One tap marks everyone present, then adjust for absences.' },
+                  { bold: 'Live count updates:', rest: 'See present and absent numbers updating in real time as you tap.' },
+                ]} />
+                <div className="lp-sub">
+                  <h3 className="lp-h3">Creating a service takes 30 seconds.</h3>
+                  <p className="lp-body">Service Type, Custom Name, Date, Time. That's all you need. Hit "Create Service" and you're ready to start marking attendance.</p>
+                  <Shot src={IMG.attendCreate} alt="Create new service" onZoom={setLightboxSrc} />
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              </Spec>
 
-        {/* ── BRANCH SWITCHER DARK CALLOUT ── */}
-        <section style={{ background: '#1E1B4B', padding: '64px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div className="fr-grid">
-              <div className="fr-text lmr-reveal" style={{ color: '#fff' }}>
-                <p className="lmr-eyebrow" style={{ color: '#A5B4FC', marginBottom: 12 }}>Multi-branch</p>
-                <h2 style={{ fontSize: 'clamp(22px,3vw,34px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-.6px', margin: '0 0 14px', color: '#fff' }}>
-                  One church, multiple branches — one login.
-                </h2>
-                <p style={{ fontSize: 15, color: 'rgba(255,255,255,.62)', lineHeight: 1.75, marginBottom: 22 }}>
-                  Switch between your branches from the top bar with one click. Data stays separate per branch,
-                  or view across all branches at once.
-                </p>
-                {[
-                  'Each branch has its own members, attendance & finance data',
-                  'Switch branches instantly — no logging out',
-                  'Staff can be cross-branch or branch-specific',
-                  'Add new branches for GHS 150 / month each',
-                ].map((t, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(165,180,252,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                      <Check size={10} color="#A5B4FC" strokeWidth={3} />
+              <Spec id="departments" title="Structure your church, cleanly."
+                body="Create departments like Media, Protocol, or Worship. Assign a leader, add members, and expand to see everyone inside. Cell groups live separately, not buried under departments.">
+                <Shot src={IMG.departments} alt="Departments and cell groups" onZoom={setLightboxSrc} />
+                <Bullets items={[
+                  { bold: 'Colour-coded departments:', rest: 'Each department has its own colour for quick visual identification.' },
+                  { bold: 'Department leader:', rest: 'Assign a leader with a crown badge, instantly visible to the whole team.' },
+                  { bold: 'Members list per department:', rest: 'Expand any department to see all members with phone numbers.' },
+                  { bold: 'General Cell Groups:', rest: 'A separate section for cell groups, not nested inside departments.' },
+                ]} />
+              </Spec>
+
+              <Spec id="communications" title="Reach your whole church with one SMS."
+                body="Type your message, pick your audience, and send. MinistryOS shows you exactly how many people will receive it before you hit send. No guessing, no wasted credits.">
+                <Shot src={IMG.comms} alt="Communications" onZoom={setLightboxSrc} />
+                <Bullets items={[
+                  { bold: 'Target by status:', rest: 'Send to all active members, inactive members, or everyone.' },
+                  { bold: 'Target by department:', rest: 'Message only the Media team, or Protocol, whoever you choose.' },
+                  { bold: 'Personalise automatically:', rest: 'Use {{firstName}} and MinistryOS fills in each person\'s name.' },
+                  { bold: 'Recipient preview:', rest: '"4 recipients will receive this message." You always know before sending.' },
+                ]} />
+              </Spec>
+
+              <Spec id="automations" title="Set it once. It runs itself."
+                body="Birthday wishes, absence follow-ups, event reminders, and welcome messages for new members, all triggered automatically, with full control to preview, pause, or run any of them manually.">
+                <div className="lp-shots-2">
+                  <Shot src={IMG.automation1} alt="Automations overview" onZoom={setLightboxSrc} />
+                  <Shot src={IMG.automation2} alt="Automations list" onZoom={setLightboxSrc} />
+                </div>
+                <Bullets items={[
+                  { bold: 'Consecutive Absence Alert:', rest: 'Automatically reaches out to members who have missed a number of services in a row.' },
+                  { bold: 'Birthday Wishes:', rest: 'Sends a birthday message to every member automatically, every day at 8AM.' },
+                  { bold: 'Event Reminders and New Member Welcome:', rest: 'Reminders fire before upcoming events, and welcome messages send the instant a new member is added.' },
+                  { bold: 'Full visibility:', rest: 'See last run time, total messages sent, and active/inactive status for every automation at a glance.' },
+                ]} />
+              </Spec>
+
+              <Spec id="reports" title="See your church's health clearly."
+                body="Four report tabs (Overview, Members, Attendance, and Finance) give your leadership team the numbers they need to make better decisions and walk into board meetings prepared.">
+                <div className="lp-shots-2">
+                  <Shot src={IMG.reportsFinance} alt="Finance report" onZoom={setLightboxSrc} />
+                  <Shot src={IMG.reportsAttend} alt="Attendance report" onZoom={setLightboxSrc} />
+                </div>
+                <Bullets items={[
+                  { bold: 'Finance report:', rest: 'Total income GHS 421,380 vs expenses GHS 168,920, with income breakdown by category.' },
+                  { bold: 'Attendance report:', rest: 'Average rate per service, and a leaderboard of your most consistent attenders.' },
+                  { bold: 'Consistent attenders:', rest: 'Ranked by services attended. Great for recognising and appreciating faithful members.' },
+                  { bold: 'Export to PDF:', rest: 'One click exports the full report, ready for printing or sharing at a board meeting.' },
+                ]} />
+              </Spec>
+
+              <Spec id="settings" title="Built for how churches are actually run."
+                body="Give each staff member their own login with the right access level. Manage multiple branches. Customise the look. MinistryOS adapts to your church's structure, not the other way around.">
+                <div className="lp-set">
+                  {[
+                    { icon: Users,    label: 'Team members: control who has access',        src: IMG.settingsTeam,   alt: 'Team members',
+                      caption: 'Add staff with roles: Pastor, Admin / Secretary, Treasurer, or Cell Leader. Each role sees only what they need to.' },
+                    { icon: GitBranch, label: 'Branches: manage multiple locations',        src: IMG.settingsBranch, alt: 'Church branches',
+                      caption: 'Running multiple branches? Each has its own data. Switch between them instantly from the top bar.' },
+                    { icon: Palette,  label: 'Appearance: light, dark, and your brand colour', src: IMG.settingsTheme, alt: 'Theme settings',
+                      caption: 'Choose Light or Dark mode and pick your church\'s brand colour, applied across every button and highlight.' },
+                    { icon: UserPlus, label: 'Adding a team member takes 30 seconds',       src: IMG.settingsAdd,    alt: 'Add team member',
+                      caption: 'Name, email, role, temporary password. Done. They log in and start working immediately.' },
+                  ].map(({ icon: Icon, label, src, alt, caption }) => (
+                    <div key={label} className="lp-set-item">
+                      <p className="lp-set-label"><Icon size={18} strokeWidth={1.6} aria-hidden="true" />{label}</p>
+                      <Shot src={src} alt={alt} onZoom={setLightboxSrc} />
+                      <p className="lp-set-cap">{caption}</p>
                     </div>
-                    <span style={{ fontSize: 14, color: 'rgba(255,255,255,.7)' }}>{t}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="fr-screen lmr-reveal">
-                <BrowserFrame src={IMG.dashBranch} alt="Branch Switcher" onZoom={setLightboxSrc} />
-              </div>
-            </div>
-          </div>
-        </section>
+                  ))}
+                </div>
+              </Spec>
 
-        {/* ── GLOBAL SEARCH ── */}
-        <section style={{ background: '#F8F7FF', padding: '72px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div className="fr-grid">
-              <div className="fr-text lmr-reveal">
-                <p className="lmr-eyebrow" style={{ color: '#374151', marginBottom: 12 }}>09 · Global Search</p>
-                <h2 className="lmr-h2">Find anything, instantly.</h2>
-                <p className="lmr-body" style={{ marginBottom: 22 }}>
-                  Press the search icon from anywhere in MinistryOS. Type a member name, a module, or a keyword — and jump there in one click. No more clicking through menus to find the page you need.
-                </p>
-                {[
+              <Spec id="search" title="Find anything, instantly."
+                body="Press the search icon from anywhere in MinistryOS. Type a member name, a module, or a keyword and jump there in one click. No more clicking through menus to find the page you need.">
+                <Shot src={IMG.globalSearch} alt="Global search" onZoom={setLightboxSrc} />
+                <Bullets items={[
                   'Search members by name or ID',
                   'Jump to any page in the platform',
                   'Available from every screen',
-                ].map((t, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                      <Check size={11} color="#4F46E5" strokeWidth={3} />
-                    </div>
-                    <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.65 }}>{t}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="fr-screen lmr-reveal">
-                <BrowserFrame src={IMG.globalSearch} alt="Global Search" onZoom={setLightboxSrc} />
-              </div>
+                ]} />
+              </Spec>
+
             </div>
+          </div>
+        </section>
+
+        {/* ── MULTI-BRANCH ── */}
+        <section className="lp-branch">
+          <div className="lp-branch-in">
+            <div className="lp-branch-copy">
+              <h2 className="lp-h2">One church, multiple branches, one login.</h2>
+              <p className="lp-body">
+                Switch between your branches from the top bar with one click. Data stays separate per branch,
+                or view across all branches at once.
+              </p>
+              <ul className="lp-branch-list">
+                {[
+                  'Each branch has its own members, attendance and finance data',
+                  'Switch branches instantly, no logging out',
+                  'Staff can be cross-branch or branch-specific',
+                  'Add new branches for GHS 150 / month each',
+                ].map(t => (<li key={t}><Check size={17} strokeWidth={2.2} aria-hidden="true" />{t}</li>))}
+              </ul>
+            </div>
+            <Shot src={IMG.dashBranch} alt="Branch switcher" onZoom={setLightboxSrc} />
           </div>
         </section>
 
         {/* ── PRICING ── */}
-        <section id="pricing" style={{ background: '#fff', padding: '80px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }} className="lmr-reveal">
-              <p className="lmr-eyebrow" style={{ color: '#4F46E5', marginBottom: 12 }}>Transparent pricing</p>
-              <h2 className="lmr-h2" style={{ textAlign: 'center' }}>Plans that grow with your church.</h2>
-              <p className="lmr-body" style={{ maxWidth: 440, margin: '0 auto' }}>
-                All plans include the full platform. You pay more only as your church grows.
-              </p>
+        <section id="pricing" className="lp-pricing">
+          <div className="lp-wrap">
+            <div className="lp-pricing-head">
+              <h2 className="lp-h2">Plans that grow with your church.</h2>
+              <p className="lp-body">All plans include the full platform. You pay more only as your church grows.</p>
             </div>
 
-            <div
-              className="lmr-bf lmr-reveal"
-              onClick={() => setLightboxSrc(IMG.billingPlans)}
-              style={{ maxWidth: 900, margin: '0 auto 40px', borderRadius: 14, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.1)', border: '1px solid #E5E7EB', cursor: 'zoom-in' }}
-            >
-              <img src={IMG.billingPlans} alt="MinistryOS Pricing Plans" style={{ width: '100%', display: 'block' }} />
-            </div>
-
-            <div className="lmr-plans-g">
-              {[
-                {
-                  name: 'Starter', price: 'GHS 200', color: '#4F46E5',
-                  feats: ['Up to 200 members','5 staff accounts','1 branch','200 SMS credits / month'],
-                },
-                {
-                  name: 'Growth', price: 'GHS 350', color: '#059669',
-                  badge: 'Most Popular', badgeBg: '#059669',
-                  feats: ['Up to 500 members','15 staff accounts','2 branches','500 SMS credits / month'],
-                },
-                {
-                  name: 'Enterprise', price: 'GHS 500', color: '#D97706',
-                  badge: 'Best Value', badgeBg: '#D97706',
-                  feats: ['Unlimited members','Unlimited staff accounts','5 branches','2,000 SMS credits / month'],
-                },
-              ].map(({ name, price, color, badge, badgeBg, feats }) => (
-                <div key={name} className="lmr-plan lmr-reveal" style={{ borderColor: badge ? color : '#E5E7EB' }}>
-                  {badge && <div className="lmr-plan-badge" style={{ background: badgeBg }}>{badge}</div>}
-                  <div className="lmr-plan-name">{name}</div>
-                  <div className="lmr-plan-price" style={{ color }}>{price}</div>
-                  <div className="lmr-plan-per">per month</div>
-                  <ul className="lmr-plan-feats">
-                    {feats.map(f => (
-                      <li key={f} className="lmr-plan-feat">
-                        <Check size={14} color={color} strokeWidth={3} style={{ flexShrink: 0 }} />{f}
-                      </li>
-                    ))}
+            <div className="lp-plans">
+              {PLANS.map(({ name, price, badge, featured, feats }) => (
+                <div key={name} className={`lp-plan${featured ? ' is-featured' : ''}`}>
+                  <div className="lp-plan-top">
+                    <h3>{name}</h3>
+                    {badge && <span className="lp-plan-badge">{badge}</span>}
+                  </div>
+                  <p className="lp-plan-price"><b>{price}</b><span>per month</span></p>
+                  <ul>
+                    {feats.map(f => (<li key={f}><Check size={16} strokeWidth={2.2} aria-hidden="true" />{f}</li>))}
                   </ul>
-                  <a href="/register" className="lmr-plan-btn" style={{ background: color }}>Get started →</a>
+                  <a href="/register" className={`mx-btn ${featured ? 'mx-btn-brass' : 'mx-btn-line'} mx-btn-block`}>Get started</a>
                 </div>
               ))}
             </div>
 
-            <div
-              className="lmr-reveal"
-              style={{ maxWidth: 900, margin: '40px auto 0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,.07)', border: '1px solid #EDE9FE' }}
-            >
-              <div style={{ background: '#F8F7FF', padding: '12px 18px', borderBottom: '1px solid #EDE9FE' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#4F46E5' }}>📱 Need more SMS? Buy top-up bundles anytime — 500 for GHS 40, 1,000 for GHS 75, 5,000 for GHS 320.</p>
+            <div className="lp-topup">
+              <Smartphone size={22} strokeWidth={1.5} aria-hidden="true" />
+              <p>Need more SMS? Buy top-up bundles anytime: 500 for GHS 40, 1,000 for GHS 75, 5,000 for GHS 320.</p>
+              <div className="lp-topup-links">
+                <button type="button" onClick={() => setLightboxSrc(IMG.billingPlans)}>See the plans screen</button>
+                <button type="button" onClick={() => setLightboxSrc(IMG.billingSms)}>See SMS top-ups</button>
               </div>
-              <img
-                src={IMG.billingSms}
-                alt="SMS Credits"
-                onClick={() => setLightboxSrc(IMG.billingSms)}
-                style={{ width: '100%', display: 'block', cursor: 'zoom-in' }}
-              />
             </div>
           </div>
         </section>
 
-        {/* ── WHY MINISTRYOS ── */}
-        <section style={{ background: '#F8F7FF', padding: '80px 20px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }} className="lmr-reveal">
-              <p className="lmr-eyebrow" style={{ color: '#4F46E5', marginBottom: 12 }}>Why MinistryOS</p>
-              <h2 className="lmr-h2" style={{ textAlign: 'center' }}>Built for modern churches worldwide.</h2>
-            </div>
-            <div className="lmr-why-g">
-              {[
-                { icon: '📱', bg: '#EEF2FF', title: 'Works on any device',         body: 'Phone, tablet, or laptop — it runs in your browser. No app to download, no installation. Open it at home, at church, anywhere.' },
-                { icon: '🌍', bg: '#ECFDF5', title: 'Built for the world',         body: 'Support for multiple currencies, languages, and payment methods. Not a one-size-fits-all — adapts to your market and congregation.' },
-                { icon: '🔐', bg: '#F5F3FF', title: 'Your data is safe',           body: 'All data is encrypted and backed up automatically. Only your team can access it. MinistryOS never shares or sells your church\'s information.' },
-                { icon: '⚡', bg: '#FFFBEB', title: 'Live in one afternoon',        body: 'Import your member list and go live the same day. Your secretary can set it up — no IT person, no training course required.' },
-                { icon: '🤖', bg: '#E0F2FE', title: 'Automations that save hours', body: 'Birthday wishes, welcome messages, absence follow-ups — set them once and they run themselves. Your members feel cared for even when you\'re busy.' },
-                { icon: '📊', bg: '#FDF2F8', title: 'Reports your board will love', body: 'Export a full attendance and finance report to PDF with one click. Come to every board meeting with real numbers — not estimates from memory.' },
-              ].map(({ icon, bg, title, body }) => (
-                <div key={title} className="lmr-why-card lmr-reveal">
-                  <div style={{ background: bg, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 22 }}>
-                    {icon}
-                  </div>
-                  <div className="lmr-why-title">{title}</div>
-                  <p className="lmr-why-body">{body}</p>
+        {/* ── WHY ── */}
+        <section className="lp-why">
+          <div className="lp-wrap">
+            <h2 className="lp-h2">Built for modern churches worldwide.</h2>
+            <div className="lp-why-g">
+              {WHY.map(({ icon: Icon, title, body }) => (
+                <div key={title} className="lp-why-item">
+                  <Icon size={26} strokeWidth={1.4} aria-hidden="true" />
+                  <h3>{title}</h3>
+                  <p>{body}</p>
                 </div>
               ))}
             </div>
@@ -1071,73 +613,50 @@ export default function LearnMore() {
         </section>
 
         {/* ── TESTIMONIALS ── */}
-        <section className="lmr-testi-sec">
-          <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }} className="lmr-reveal">
-            <p className="lmr-eyebrow" style={{ color: '#A5B4FC', marginBottom: 12 }}>
-              From pastors & admins using MinistryOS
-            </p>
-            <h2 style={{ fontSize: 'clamp(24px,3.5vw,42px)', fontWeight: 900, color: '#fff', letterSpacing: '-1px', lineHeight: 1.1 }}>
-              Churches that made the switch.
-            </h2>
-          </div>
-          <div className="lmr-testi-g">
-            {[
-              { q: 'Before MinistryOS, our attendance records were in notebooks. Now we see last Sunday\'s numbers before we leave the building.', name: 'Ps. Emmanuel Asante',  role: 'Senior Pastor, Accra',         init: 'EA', color: '#4F46E5' },
-              { q: 'The MoMo giving feature changed everything. Pledges are up because members can now track their own commitments and feel accountable.', name: 'Mrs. Abena Mensah',   role: 'Church Administrator, Kumasi', init: 'AM', color: '#059669' },
-              { q: 'We activated the birthday automation and members started calling to say thank you. It costs us nothing and it means everything to them.', name: 'Elder Kwame Boateng', role: 'Church Leader, Takoradi',       init: 'KB', color: '#D97706' },
-            ].map(({ q, name, role, init, color }) => (
-              <div key={name} className="lmr-testi-card lmr-reveal">
-                <p className="lmr-testi-q">"{q}"</p>
-                <div className="lmr-testi-p">
-                  <div className="lmr-testi-av" style={{ background: color }}>{init}</div>
-                  <div>
-                    <div className="lmr-testi-name">{name}</div>
-                    <div className="lmr-testi-role">{role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <section className="lp-testi">
+          <div className="lp-wrap">
+            <h2 className="lp-h2">Churches that made the switch.</h2>
+            <div className="lp-testi-g">
+              {TESTIMONIALS.map(({ q, name, role, init }, i) => (
+                <figure key={name} className={`lp-quote${i === 0 ? ' is-lead' : ''}`}>
+                  <blockquote>{q}</blockquote>
+                  <figcaption>
+                    <span className="lp-av">{init}</span>
+                    <span><b>{name}</b><i>{role}</i></span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* ── FINAL CTA ── */}
-        <section className="lmr-cta">
-          <div className="lmr-cta-in lmr-reveal">
-            <p className="lmr-eyebrow" style={{ color: '#4F46E5', textAlign: 'center', marginBottom: 16 }}>Ready to start?</p>
-            <h2 className="lmr-cta-h2">
-              Your church runs on people.<br />
-              Let MinistryOS handle <em>the rest.</em>
-            </h2>
-            <p className="lmr-cta-body">
+        <section className="lp-final">
+          <ArchLines className="lp-final-arches" />
+          <div className="lp-final-in">
+            <h2 className="lp-final-h2">Your church runs on people. Let MinistryOS handle the rest.</h2>
+            <p className="lp-final-body">
               {promoActive
-                ? `Register today and get ${founding.bonusCredits} free SMS credits — only ${remaining} founding spot${remaining !== 1 ? 's' : ''} left. No credit card needed to start.`
+                ? `Register today and get ${founding.bonusCredits} free SMS credits. Only ${remaining} founding spot${remaining !== 1 ? 's' : ''} left. No credit card needed to start.`
                 : `Register today and start your 30-day free trial with ${STANDARD_TRIAL_SMS_FALLBACK} free SMS credits included. No credit card needed to start.`}
               {' '}Your first branch is included. You can be live before Sunday.
             </p>
-            <div className="lmr-cta-btns">
-              <a href="/register" className="lmr-cta-primary">
-                Register your church free <ArrowRight size={16} />
-              </a>
-              <a href="/login" className="lmr-cta-secondary">
-                Already have an account
-              </a>
+            <div className="lp-cta-row">
+              <a href="/register" className="mx-btn mx-btn-brass">Register your church free <ArrowRight size={17} aria-hidden="true" /></a>
+              <a href="/login" className="mx-btn mx-btn-line-light">Already have an account</a>
             </div>
-            <p className="lmr-cta-note">No setup fee · Cancel anytime · GHS 200 / month to start</p>
+            <p className="lp-final-note">No setup fee. Cancel anytime. GHS 200 / month to start.</p>
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
         <Footer />
-
       </div>
 
-      {/* ── LIGHTBOX: click/tap any screenshot to view it full-size.
-           On mobile this fills the screen and supports native pinch-zoom. ── */}
+      {/* ── LIGHTBOX: tap any screenshot to view it full-size ── */}
       {lightboxSrc && (
-        <div className="lmr-lightbox" onClick={() => setLightboxSrc(null)}>
-          <button className="lmr-lightbox-close" onClick={() => setLightboxSrc(null)}>✕</button>
+        <div className="mx lp-lightbox" onClick={() => setLightboxSrc(null)} role="dialog" aria-modal="true" aria-label="Screenshot preview">
+          <button type="button" className="lp-lightbox-close" onClick={() => setLightboxSrc(null)} aria-label="Close preview"><X size={22} /></button>
           <img src={lightboxSrc} alt="Zoomed view" onClick={(e) => e.stopPropagation()} />
-          <span className="lmr-lightbox-hint">Tap anywhere to close</span>
         </div>
       )}
     </>

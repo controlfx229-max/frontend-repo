@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useApi from '../../hooks/useApi'
+import { useAuth } from '../../context/AuthContext'
 import {
   Plus, Users, Search, Edit2, Archive, Eye,
   ChevronDown, ChevronUp, AlertCircle, CheckCircle,
@@ -10,6 +11,8 @@ import Modal from '../../components/ui/Modal'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import EmptyState from '../../components/ui/EmptyState'
+import { toDateInput } from '../../utils/dates'
+import MemberImport from './MemberImport'
 
 // ─── REQUIRED FIELD INDICATOR ─────────────────
 // Small red asterisk shown next to required field labels
@@ -35,7 +38,7 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
     whatsapp:          editing?.whatsapp          || '',
     gender:            editing?.gender            || '',
     dateOfBirth:       editing?.dateOfBirth
-      ? new Date(editing.dateOfBirth).toISOString().split('T')[0] : '',
+      ? toDateInput(editing.dateOfBirth) : '',
     maritalStatus:     editing?.maritalStatus     || '',
     occupation:        editing?.occupation        || '',
     address:           editing?.address           || '',
@@ -44,7 +47,7 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
     cellGroupId:       String(groupId),
     baptized:          editing?.baptized          || false,
     baptismDate:       editing?.baptismDate
-      ? new Date(editing.baptismDate).toISOString().split('T')[0] : '',
+      ? toDateInput(editing.baptismDate) : '',
     nextOfKinName:     editing?.nextOfKinName     || '',
     nextOfKinPhone:    editing?.nextOfKinPhone    || '',
     nextOfKinRelation: editing?.nextOfKinRelation || '',
@@ -479,6 +482,7 @@ function MemberForm({ api, editing, onSuccess, onClose, departments = [], cellGr
 // ─── MAIN MEMBERS PAGE ────────────────────────
 export default function Members() {
   const { api, branchReady } = useApi()
+  const { can } = useAuth()
   const navigate = useNavigate()
 
   const [members, setMembers]               = useState([])
@@ -492,6 +496,7 @@ export default function Members() {
   const [total, setTotal]                   = useState(0)
   const [limit]                             = useState(20)
   const [showModal, setShowModal]           = useState(false)
+  const [showImport, setShowImport]         = useState(false)
   const [editing, setEditing]               = useState(null)
   const [confirmArchive, setConfirmArchive] = useState(null)
   const [successMsg, setSuccessMsg]         = useState('')
@@ -591,12 +596,21 @@ export default function Members() {
           <h1 className="page-title">Members</h1>
           <p className="page-subtitle">{total} total members</p>
         </div>
-        <button
-          className="btn-primary"
-          onClick={() => { setEditing(null); setShowModal(true) }}
-        >
-          <Plus size={16} /> Add Member
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          {can('members.import') && (
+            <button className="btn-outline" onClick={() => setShowImport(true)}>
+              <Upload size={16} /> Import List
+            </button>
+          )}
+          {can('members.create') && (
+            <button
+              className="btn-primary"
+              onClick={() => { setEditing(null); setShowModal(true) }}
+            >
+              <Plus size={16} /> Add Member
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -642,7 +656,7 @@ export default function Members() {
           icon={Users}
           title="No members yet"
           message="Add your first member to get started."
-          action={{ label: '+ Add Member', onClick: () => setShowModal(true) }}
+          action={can('members.create') ? { label: '+ Add Member', onClick: () => setShowModal(true) } : undefined}
         />
       ) : (
         <>
@@ -685,8 +699,8 @@ export default function Members() {
                           <span style={{
                             padding: '3px 8px',
                             borderRadius: 'var(--radius-sm)',
-                            background: (member.departmentId?.color || '#4F46E5') + '20',
-                            color: member.departmentId?.color || '#4F46E5',
+                            background: (member.departmentId?.color || '#059669') + '20',
+                            color: member.departmentId?.color || '#059669',
                             fontWeight: 700,
                             fontSize: 'var(--text-xs)'
                           }}>
@@ -719,20 +733,24 @@ export default function Members() {
                         >
                           <Eye size={16} />
                         </button>
-                        <button
-                          onClick={() => { setEditing(member); setShowModal(true) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', marginRight: 4 }}
-                          title="Edit"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => setConfirmArchive(member)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}
-                          title="Archive"
-                        >
-                          <Archive size={16} />
-                        </button>
+                        {can('members.edit') && (
+                          <button
+                            onClick={() => { setEditing(member); setShowModal(true) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', marginRight: 4 }}
+                            title="Edit"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
+                        {can('members.archive') && (
+                          <button
+                            onClick={() => setConfirmArchive(member)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}
+                            title="Archive"
+                          >
+                            <Archive size={16} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )
@@ -779,6 +797,27 @@ export default function Members() {
           onSuccess={handleSuccess}
           onClose={() => { setShowModal(false); setEditing(null) }}
         />
+      </Modal>
+
+      {/* Import a member list (PDF / Excel / Word / CSV) */}
+      <Modal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        title="Import your member list"
+        size="lg"
+      >
+        {showImport && (
+          <MemberImport
+            api={api}
+            onClose={() => setShowImport(false)}
+            onDone={(count) => {
+              setShowImport(false)
+              setPage(1)
+              fetchMembers()
+              if (count > 0) showSuccess(`${count} member${count === 1 ? '' : 's'} imported.`)
+            }}
+          />
+        )}
       </Modal>
 
       {/* Archive confirmation */}
