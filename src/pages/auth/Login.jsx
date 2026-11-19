@@ -14,7 +14,7 @@ const POINTS = [
 // STANDARD_TRIAL_SMS_CREDITS in auth.controller.js. Only used as a
 // display fallback before /auth/founding-status has responded, or once
 // the founding promo has run out.
-const STANDARD_TRIAL_SMS_FALLBACK = 25
+const STANDARD_TRIAL_SMS_FALLBACK = 200
 
 export default function Login() {
   const { login } = useAuth()

@@ -149,7 +149,7 @@ const QUICK_NAV = [
 // STANDARD_TRIAL_SMS_CREDITS in auth.controller.js. Used only as
 // display copy once the founding promo has run out; the founding
 // numbers themselves always come live from /auth/founding-status.
-const STANDARD_TRIAL_SMS_FALLBACK = 25
+const STANDARD_TRIAL_SMS_FALLBACK = 200
 
 const PLANS = [
   { name: 'Starter',    price: 'GHS 200', feats: ['Up to 200 members', '5 staff accounts', '1 branch', '200 SMS credits / month'] },
@@ -583,6 +583,11 @@ export default function LearnMore() {
                   <a href="/register" className={`mx-btn ${featured ? 'mx-btn-brass' : 'mx-btn-line'} mx-btn-block`}>Get started</a>
                 </div>
               ))}
+            </div>
+
+            <div className="lp-topup">
+              <ShieldCheck size={22} strokeWidth={1.5} aria-hidden="true" />
+              <p>Pay online with Mobile Money (MTN, Telecel, AirtelTigo) or card, secured by Paystack. Your plan activates automatically as soon as the payment is confirmed.</p>
             </div>
 
             <div className="lp-topup">

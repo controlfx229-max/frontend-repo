@@ -31,7 +31,7 @@ const POINTS = [
 // STANDARD_TRIAL_SMS_CREDITS in auth.controller.js. Only used as a
 // display fallback before /auth/founding-status has responded; the
 // actual value always comes from the backend at registration time.
-const STANDARD_TRIAL_SMS_FALLBACK = 25
+const STANDARD_TRIAL_SMS_FALLBACK = 200
 
 // ─── STEP INDICATOR ──────────────────────────
 function Steps({ current }) {
