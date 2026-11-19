@@ -156,29 +156,32 @@
 
 /* ── Responsive ────────────────────────────── */
 @media (max-width: 1100px) {
+  .mx .lp-tour-body, .mx .lp-index, .mx .lp-hero-copy, .mx .lp-demo > *, .mx .lp-branch-in > *, .mx .lp-art { min-width: 0; }
+  .mx .lp-art img, .mx .lp-shot, .mx .lp-tabs { max-width: 100%; }
+  .mx .lp-tabs { overflow-x: auto; scrollbar-width: none; }
   .mx .lp-hero { padding-top: 112px; }
-  .mx .lp-hero-in { grid-template-columns: 1fr; gap: 0; }
+  .mx .lp-hero-in { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .mx .lp-hero-copy { padding-bottom: 56px; }
   .mx .lp-hero-shot { width: 100%; border-radius: 14px 14px 0 0; border-right: 1px solid rgba(255,255,255,.22); }
   .mx .lp-hero-shot img { height: auto; max-height: 460px; }
   .mx .lp-hero-arches { right: -30%; width: 640px; }
-  .mx .lp-demo { grid-template-columns: 1fr; gap: 32px; padding-top: 80px; }
-  .mx .lp-tour-in { grid-template-columns: 1fr; gap: 0; padding-top: 0; }
+  .mx .lp-demo { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 80px; }
+  .mx .lp-tour-in { grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 0; }
   .mx .lp-index { position: sticky; top: 72px; z-index: 40; margin: 0 -32px 56px; padding: 0 32px; background: rgba(255,255,255,.96); backdrop-filter: blur(8px); border-bottom: 1px solid var(--mx-line); }
   .mx .lp-index ul { display: flex; gap: 22px; overflow-x: auto; scrollbar-width: none; }
   .mx .lp-index ul::-webkit-scrollbar { display: none; }
   .mx .lp-index li { flex: none; }
   .mx .lp-index button { width: auto; border-left: 0; border-bottom: 2px solid transparent; padding: 16px 0 12px; white-space: nowrap; }
   .mx .lp-index button.is-on { border-bottom-color: var(--mx-brass); }
-  .mx .lp-branch-in { grid-template-columns: 1fr; padding: 40px 32px; }
-  .mx .lp-facts-in { grid-template-columns: 1fr 1fr; }
+  .mx .lp-branch-in { grid-template-columns: minmax(0, 1fr); padding: 40px 32px; }
+  .mx .lp-facts-in { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mx .lp-facts-in li:nth-child(odd) { border-left: 0; padding-left: 0; }
   .mx .lp-facts-in li:nth-child(n+3) { border-top: 1px solid var(--mx-line); }
-  .mx .lp-plans { grid-template-columns: 1fr; }
+  .mx .lp-plans { grid-template-columns: minmax(0, 1fr); }
   .mx .lp-plan { border-left: 0; border-top: 1px solid var(--mx-line-2); }
   .mx .lp-plan:first-child { border-top: 0; }
-  .mx .lp-why-g { grid-template-columns: 1fr 1fr; }
-  .mx .lp-testi-g { grid-template-columns: 1fr; }
+  .mx .lp-why-g { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mx .lp-testi-g { grid-template-columns: minmax(0, 1fr); }
   .mx .lp-quote.is-lead { grid-row: auto; }
 }
 @media (max-width: 760px) {
@@ -188,16 +191,24 @@
   .mx .lp-tour-in { padding-left: 20px; padding-right: 20px; }
   .mx .lp-facts-in { padding: 0 20px; }
   .mx .lp-index { margin-left: -20px; margin-right: -20px; padding: 0 20px; }
-  .mx .lp-bul, .mx .lp-set, .mx .lp-shots-2 { grid-template-columns: 1fr; }
+  .mx .lp-bul, .mx .lp-set, .mx .lp-shots-2 { grid-template-columns: minmax(0, 1fr); }
   .mx .lp-art { padding-bottom: 56px; margin-bottom: 56px; }
   .mx .lp-topup { flex-direction: column; align-items: flex-start; }
   .mx .lp-branch-in { padding: 32px 22px; }
-  .mx .lp-why-g { grid-template-columns: 1fr; }
+  .mx .lp-why-g { grid-template-columns: minmax(0, 1fr); }
   .mx .lp-nav-signin { display: none; }
 }
 @media (max-width: 480px) {
-  .mx .lp-facts-in { grid-template-columns: 1fr; }
+  .mx .lp-facts-in { grid-template-columns: minmax(0, 1fr); }
   .mx .lp-facts-in li { border-left: 0; padding-left: 0 !important; border-top: 1px solid var(--mx-line); }
   .mx .lp-facts-in li:first-child { border-top: 0; }
   .mx .lp-cta-row .mx-btn { width: 100%; }
+}
+@media (max-width: 760px) {
+  .mx .lp-body { font-size: 16.5px; }
+  .mx .lp-plan { padding: 28px 22px; }
+  .mx .lp-plan-price b { font-size: 42px; }
+  .mx .lp-final { padding-top: 88px; padding-bottom: 88px; }
+  .mx .lp-pricing, .mx .lp-why, .mx .lp-testi { padding-top: 72px; padding-bottom: 72px; }
+  .mx .lp-lightbox { padding: 12px; }
 }

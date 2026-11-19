@@ -6,4 +6,12 @@
 .mx .ft li a { font-size: 14.5px; color: rgba(255,255,255,.64); text-decoration: none; transition: color .15s; }
 .mx .ft li a:hover { color: var(--mx-brass); }
 .mx .ft-base { max-width: 1240px; margin: 56px auto 0; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; font-size: 13px; color: rgba(255,255,255,.45); }
-@media (max-width: 760px) { .mx.ft { padding: 56px 20px 28px; } .ft-grid { grid-template-columns: 1fr 1fr; gap: 36px 24px; } .ft-grid > div { grid-column: 1 / -1; } }
+@media (max-width: 760px) {
+  .mx.ft { padding: 56px 20px 28px; }
+  .mx .ft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 24px; }
+  .mx .ft-grid > div { grid-column: 1 / -1; }
+  .mx .ft-base { margin-top: 40px; }
+}
+@media (max-width: 400px) {
+  .mx .ft-grid { grid-template-columns: minmax(0, 1fr); }
+}
