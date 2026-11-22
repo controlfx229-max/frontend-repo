@@ -336,6 +336,8 @@ function AppRoutes() {
         }
       >
         <Route path="/billing" element={<RequirePermission path="/billing"><Billing /></RequirePermission>} />
+        {/* Paystack sends churches back here after paying; the Billing page confirms the payment */}
+        <Route path="/billing/paystack/callback" element={<RequirePermission path="/billing"><Billing /></RequirePermission>} />
       </Route>
 
       {/* ── CHURCH APP ────────────────────────── */}

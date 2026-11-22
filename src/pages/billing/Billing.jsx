@@ -23,8 +23,10 @@ const isMomoPayment = (p) => !p?.currency || p.currency === 'GHS'
 // Starts a secure Paystack checkout (Mobile Money or card) and sends the browser there.
 // Paystack brings the church back to /billing, where the payment is confirmed.
 const startOnlinePayment = async (token, reference) => {
-  const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/pay-online/${reference}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}` }
+  const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/paystack/initialize`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reference })
   })
   const data = await res.json()
   if (!data.success) throw new Error(data.message || 'Could not start the online payment.')
@@ -266,7 +268,7 @@ function UsageCard({ label, current, limit, color, icon: Icon }) {
 }
 
 // ── PAYMENT MODAL ─────────────────────────────
-function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, onlinePayments: onlineCurrencies, onClose, onSuccess }) {
+function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, onClose, onSuccess }) {
   const [loading,  setLoading]  = useState(false)
   const [redirecting, setRedirecting] = useState(false)
   const [creating, setCreating] = useState(true)
@@ -402,7 +404,7 @@ function PaymentModal({ type, plan, billingCycle, smsBundle, branchName, token, 
                 </p>
               </div>
 
-              {onlineCurrencies?.includes(payment.currency) && (
+              {payment.paystackEnabled && (
                 <div style={{ textAlign: 'center' }}>
                   <button className="btn-primary" onClick={handlePayNow} disabled={redirecting}
                     style={{ width: '100%', padding: '14px 0', fontSize: 'var(--text-base)' }}>
@@ -603,11 +605,21 @@ export default function Billing() {
     setPayResult({ state: 'checking' })
     ;(async () => {
       try {
-        const res  = await fetch(`${import.meta.env.VITE_API_URL}/billing/paystack/verify/${encodeURIComponent(ref)}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        const data = await res.json()
-        const state = data.status === 'approved' ? 'approved' : data.status === 'failed' ? 'failed' : data.status === 'problem' ? 'problem' : 'pending'
+        // The server confirms with Paystack. Mobile Money can take a few seconds,
+        // so ask up to 6 times, 3 seconds apart, while the status is still "processing".
+        let data = {}
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/billing/paystack/verify/${encodeURIComponent(ref)}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          data = await res.json()
+          if (data.status !== 'processing') break
+          await new Promise(r => setTimeout(r, 3000))
+        }
+        const state = data.status === 'approved' ? 'approved'
+          : ['failed', 'abandoned', 'reversed'].includes(data.status) ? 'failed'
+          : (data.status === 'flagged' || data.status === 'problem') ? 'problem'
+          : 'pending'
         setPayResult({ state, message: data.message })
         if (state === 'approved') {
           fetchBilling()
@@ -944,7 +956,7 @@ export default function Billing() {
       )}
 
       {/* ── HISTORY ── */}
-      {activeTab === 'history' && <PaymentHistory token={token} onlinePayments={billing?.onlinePayments ? billing.onlineCurrencies : null} />}
+      {activeTab === 'history' && <PaymentHistory token={token} />}
 
       {/* Payment Modal */}
       {modal && (
@@ -955,7 +967,6 @@ export default function Billing() {
           smsBundle={modal.smsBundle}
           branchName={modal.branchName}
           token={token}
-          onlinePayments={billing?.onlinePayments ? billing.onlineCurrencies : null}
           onClose={() => setModal(null)}
           onSuccess={() => { setModal(null); fetchBilling() }}
         />
@@ -965,8 +976,7 @@ export default function Billing() {
 }
 
 // ─── HISTORY ROW ─────────────────────────────
-function HistoryRow({ payment, token, onlinePayments: onlineCurrencies, onRefresh }) {
-  const onlinePayments = !!onlineCurrencies?.includes(payment.currency)
+function HistoryRow({ payment, token, onlinePayments, onRefresh }) {
   const [payingOnline, setPayingOnline] = useState(false)
   const [cancelling,   setCancelling]   = useState(false)
   const [showConfirm,  setShowConfirm]  = useState(false)
@@ -1246,8 +1256,9 @@ function HistoryRow({ payment, token, onlinePayments: onlineCurrencies, onRefres
 }
 
 // ─── PAYMENT HISTORY ──────────────────────────
-function PaymentHistory({ token, onlinePayments }) {
+function PaymentHistory({ token }) {
   const [payments, setPayments] = useState([])
+  const [onlinePayments, setOnlinePayments] = useState(false)
   const [loading,  setLoading]  = useState(true)
 
   const fetchPayments = useCallback(async () => {
@@ -1257,7 +1268,7 @@ function PaymentHistory({ token, onlinePayments }) {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (data.success) setPayments(data.payments)
+      if (data.success) { setPayments(data.payments); setOnlinePayments(!!data.paystackEnabled) }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }, [token])
